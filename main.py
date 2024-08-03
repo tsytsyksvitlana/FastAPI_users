@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 
-app = FastAPI(
-    title="Fox project"
-)
+app = FastAPI(title="Fox project")
 
 
 @app.get("/")
