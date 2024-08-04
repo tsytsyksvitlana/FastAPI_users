@@ -45,6 +45,14 @@ services:
     networks:
       - home
 
+  alembic:
+    build: .
+    command: alembic upgrade head
+    depends_on:
+      - postgres
+    networks:
+      - home
+
   ipython:
     build: .
     command: ipython
