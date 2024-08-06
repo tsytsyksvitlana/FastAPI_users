@@ -19,7 +19,7 @@ services:
     volumes:
       - test_postgres_data:/var/lib/postgresql/data/
     ports:
-      - "8112:5432"
+      - "8112:5433"
     env_file:
       - .env.test
     environment:
@@ -45,13 +45,17 @@ services:
     networks:
       - home
 
-  alembic:
-    build: .
-    command: alembic upgrade head
-    depends_on:
-      - postgres
-    networks:
-      - home
+  # alembic:
+  #   build: .
+  #   command: alembic upgrade head
+  #   depends_on:
+  #     - postgres
+  #   environment:
+  #     - POSTGRES_USER=${PG_USER}
+  #     - POSTGRES_PASSWORD=${PG_PASS}
+  #     - POSTGRES_DB=${PG_NAME}
+  #   networks:
+  #     - home
 
   ipython:
     build: .
