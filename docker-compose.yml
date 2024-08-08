@@ -1,21 +1,21 @@
 services:
   postgres:
     container_name: db-postgres
-    image: postgres:14
+    image: "postgres:alpine"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
       - "8111:5432"
     environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=filmdbpass
+      - POSTGRES_DB=filmdb
     networks:
       - home
 
   test_postgres:
     container_name: test-db-postgres
-    image: postgres:14
+    image: "postgres:alpine"
     volumes:
       - test_postgres_data:/var/lib/postgresql/data/
     ports:
@@ -23,9 +23,9 @@ services:
     env_file:
       - .env.test
     environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=filmdbpass
+      - POSTGRES_DB=filmdb
     networks:
       - home
 
@@ -39,23 +39,25 @@ services:
     depends_on:
       - postgres
     environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=filmdbpass
+      - POSTGRES_DB=filmdb
+      - POSTGRES_HOST=postgres
     networks:
       - home
 
-  # alembic:
-  #   build: .
-  #   command: alembic upgrade head
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     - POSTGRES_USER=${PG_USER}
-  #     - POSTGRES_PASSWORD=${PG_PASS}
-  #     - POSTGRES_DB=${PG_NAME}
-  #   networks:
-  #     - home
+  alembic:
+    build: .
+    command: alembic upgrade head
+    depends_on:
+      - postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=filmdbpass
+      - POSTGRES_DB=filmdb
+      - POSTGRES_HOST=postgres
+    networks:
+      - home
 
   ipython:
     build: .
@@ -65,9 +67,10 @@ services:
     depends_on:
       - postgres
     environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=filmdbpass
+      - POSTGRES_DB=filmdb
+      - POSTGRES_HOST=postgres
     networks:
       - home
 
@@ -77,4 +80,4 @@ volumes:
 
 networks:
   home:
-    external: true
+    driver: bridge
