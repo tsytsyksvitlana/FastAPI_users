@@ -1,6 +1,5 @@
 services:
   postgres:
-    container_name: db-postgres
     image: "postgres:alpine"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
