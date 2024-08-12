@@ -5,33 +5,21 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
-      - "8111:5432"
+      - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=filmdbpass
-      - POSTGRES_DB=filmdb
-    networks:
-      - home
-
-  test_postgres:
-    container_name: test-db-postgres
-    image: "postgres:alpine"
-    volumes:
-      - test_postgres_data:/var/lib/postgresql/data/
-    ports:
-      - "8112:5433"
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASS}
+      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_HOST=${PG_HOST}
+      - POSTGRES_PORT=${PG_PORT}
     env_file:
-      - .env.test
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=filmdbpass
-      - POSTGRES_DB=filmdb
+      - ./.env
     networks:
       - home
 
   web:
     build: .
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn web_app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/code
     ports:
@@ -39,38 +27,13 @@ services:
     depends_on:
       - postgres
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=filmdbpass
-      - POSTGRES_DB=filmdb
-      - POSTGRES_HOST=postgres
-    networks:
-      - home
-
-  alembic:
-    build: .
-    command: alembic upgrade head
-    depends_on:
-      - postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=filmdbpass
-      - POSTGRES_DB=filmdb
-      - POSTGRES_HOST=postgres
-    networks:
-      - home
-
-  ipython:
-    build: .
-    command: ipython
-    volumes:
-      - .:/code
-    depends_on:
-      - postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=filmdbpass
-      - POSTGRES_DB=filmdb
-      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASS}
+      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_HOST=${PG_HOST}
+      - POSTGRES_PORT=${PG_PORT}
+    env_file:
+      - ./.env
     networks:
       - home
 

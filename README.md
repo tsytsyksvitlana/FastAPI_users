@@ -13,13 +13,11 @@
 ### Create .env file and fill with required data
 
 ```
-PG_USER=<YOUR_PG_USER>
-PG_PASS=<YOUR_PG_PASS>
-PG_NAME=<YOUR_PG_NAME>
-
-TEST_PG_USER=<YOUR_TEST_PG_USER>
-TEST_PG_PASS=<YOUR_TEST_PG_PASS>
-TEST_PG_NAME=<YOUR_TEST_PG_NAME>
+PG_USER=
+PG_PASS=
+PG_NAME=
+PG_HOST=
+PG_PORT=
 ```
 ### Create home network
 ```

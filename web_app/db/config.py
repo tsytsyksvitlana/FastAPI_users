@@ -1,20 +1,25 @@
-import os
-
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PG_USER: str = os.getenv("PG_USER")
-    PG_PASS: str = os.getenv("PG_PASS")
-    PG_NAME: str = os.getenv("PG_NAME")
-    PG_HOST: str = os.getenv("PG_HOST")
-    PG_PORT: str = os.getenv("PG_PORT")
+    PG_USER: str
+    PG_PASS: str
+    PG_NAME: str
+    PG_HOST: str
+    PG_PORT: str
 
     echo: bool = True
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
+    def url(self):
+        return (
+            f"postgresql+asyncpg://"
+            f"{self.PG_USER}:{self.PG_PASS}@"
+            f"{self.PG_HOST}:{self.PG_PORT}/{self.PG_NAME}"
+        )
 
 
 settings = Settings()
