@@ -44,6 +44,19 @@ pytest
 ```
 pre-commit run --all-files
 ```
+### Migrations
+```
+docker exec -it fastapi-web-1 /bin/sh
+```
+```
+cd /code/web_app
+```
+```
+alembic revision --autogenerate -m "message"
+```
+```
+exit
+```
 
 ### Technology
 

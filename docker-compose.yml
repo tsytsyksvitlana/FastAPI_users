@@ -36,6 +36,22 @@ services:
     networks:
       - home
 
+  alembic:
+    build: .
+    command: /bin/sh -c "cd web_app && alembic upgrade head"
+    depends_on:
+      - postgres
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASS}
+      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_HOST=${PG_HOST}
+      - POSTGRES_PORT=${PG_PORT}
+    env_file:
+      - ./.env
+    networks:
+      - home
+
 volumes:
   postgres_data:
   test_postgres_data:

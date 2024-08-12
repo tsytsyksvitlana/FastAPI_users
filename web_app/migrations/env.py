@@ -2,12 +2,11 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+from db.config import settings
 from models.base import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-# from db.config import settings
 
 config = context.config
 
@@ -16,10 +15,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# config.set_main_option(
-# "sqlalchemy.url",
-# "postgresql+asyncpg://postgres:filmdbpass@postgres:5432/filmdb"
-# )
+config.set_main_option("sqlalchemy.url", settings.url())
 
 
 def run_migrations_offline() -> None:
