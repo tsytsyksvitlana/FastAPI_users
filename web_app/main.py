@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 import uvloop
 from fastapi import FastAPI
 
+from web_app.auth.router import router as auth_router
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -18,6 +20,7 @@ async def lifespan(_app: FastAPI):
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 app = FastAPI(title="Fox project", lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.get("/")

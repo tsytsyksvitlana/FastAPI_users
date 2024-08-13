@@ -4,7 +4,7 @@ from typing import ClassVar
 from pydantic import BaseModel, EmailStr, field_validator
 
 
-class User(BaseModel):
+class UserS(BaseModel):
     email: EmailStr
     password: str
 
@@ -12,9 +12,9 @@ class User(BaseModel):
         r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d@\"'<>\s]).{8,24}$"
     )
 
-    @field_validator("email")
-    def validate_email(cls, v):
-        if not cls.EMAIL_REGEX.match(v):
+    @field_validator("password")
+    def validate_password(cls, v):
+        if not cls.PASSWORD_REGEX.match(v):
             raise ValueError(
                 "Password must be 8-24 characters long, contain digits, "
                 "lowercase and uppercase letters, and special characters "
