@@ -1,19 +1,27 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.auth import utils
+from web_app.auth.config import auth_jwt
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import UserS
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+http_bearer = HTTPBearer(auto_error=True)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str | None = None
+    token_type: str = "Bearer"
 
 
 async def validate_auth_user(
@@ -64,10 +72,86 @@ async def register_user(
     return {"msg": "User successfully registered"}
 
 
+def create_jwt(
+    token_type: str,
+    token_data: dict,
+    expire_minutes: int = auth_jwt.access_token_expire_minutes,
+    expire_timedelta: timedelta | None = None,
+) -> str:
+    jwt_payload = {"type": token_type, **token_data}
+    return utils.encode_jwt(
+        payload=jwt_payload,
+        expire_timedelta=expire_timedelta,
+        expire_minutes=expire_minutes,
+    )
+
+
+def create_access_token(email: str) -> str:
+    payload = {
+        "sub": email,
+        "email": email,
+    }
+    return create_jwt(
+        token_type="access",
+        token_data=payload,
+        expire_minutes=auth_jwt.access_token_expire_minutes,
+    )
+
+
+def create_refresh_token(email: str) -> str:
+    payload = {
+        "email": email,
+    }
+    return create_jwt(
+        token_type="refresh",
+        token_data=payload,
+        expire_timedelta=timedelta(days=auth_jwt.refresh_token_expire_days),
+    )
+
+
 @router.post("/login/", response_model=Token)
 async def login(user: User = Depends(validate_auth_user)):
-    payload = {
-        "email": user.email,
-    }
-    token = utils.encode_jwt(payload)
-    return Token(access_token=token, token_type="Bearer")
+    access_token = create_access_token(user.email)
+    refresh_token = create_refresh_token(user.email)
+    return Token(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/logout/", status_code=status.HTTP_200_OK)
+async def logout(token: str = Depends(oauth2_scheme)):
+    # TODO: make token invalid
+    return {"msg": "Logged out successfully"}
+
+
+@router.post(
+    "/refresh/", response_model=Token, response_model_exclude_none=True
+)
+async def auth_refresh_jwt(token: str = Depends(http_bearer)):
+    try:
+        token = token.credentials
+        public_key = auth_jwt.public_key_path.read_text()
+        algorithm = auth_jwt.algorithm
+        payload = utils.decode_jwt(token, public_key, algorithm)
+
+        token_type = payload.get("type")
+        user_email = payload.get("email")
+
+        if not user_email or token_type not in ("access", "refresh"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+            )
+
+        if token_type == "access":
+            new_refresh_token = create_refresh_token(user_email)
+            return Token(access_token=token, refresh_token=new_refresh_token)
+
+        elif token_type == "refresh":
+            new_access_token = create_access_token(user_email)
+            return Token(access_token=new_access_token, refresh_token=token)
+
+    except Exception as e:
+        print(f"Error during token refresh: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
