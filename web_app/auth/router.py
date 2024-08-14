@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, status
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -17,7 +17,6 @@ from web_app.schemas.user import UserS
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 http_bearer = HTTPBearer(auto_error=True)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 async def validate_auth_user(
@@ -76,7 +75,7 @@ async def login(user: User = Depends(validate_auth_user)):
 
 
 @router.post("/logout/", status_code=status.HTTP_200_OK)
-async def logout(token: str = Depends(oauth2_scheme)):
+async def logout(token: str = Depends(http_bearer)):
     # TODO: make token invalid
     return {"msg": "Logged out successfully"}
 
@@ -113,3 +112,53 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
+
+async def get_current_user(
+    token: str = Depends(http_bearer),
+    session: AsyncSession = Depends(db_helper.session_getter),
+) -> User:
+    public_key = auth_jwt.public_key_path.read_text()
+    algorithm = auth_jwt.algorithm
+    payload = utils.decode_jwt(token.credentials, public_key, algorithm)
+
+    user_email = payload.get("email")
+    if not user_email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    query = select(User).where(User.email == user_email)
+    result = await session.execute(query)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    return user
+
+
+@router.post("/change_password/", status_code=status.HTTP_200_OK)
+async def change_password(
+    current_password: str = Form(),
+    new_password: str = Form(),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    if not utils.validate_password(
+        password=current_password, hashed_password=user.password
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect current password",
+        )
+
+    hashed_new_password = utils.hash_password(new_password).decode("utf-8")
+    user.password = hashed_new_password
+    session.add(user)
+    await session.commit()
+
+    return {"msg": "Password successfully changed"}
