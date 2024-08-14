@@ -31,16 +31,13 @@ def encode_jwt(
 
 def decode_jwt(token: str | bytes, public_key: str, algorithm: str):
     try:
-        print(f"Decoding JWT: {token}")
         decoded = jwt.decode(token, public_key, algorithms=[algorithm])
-        print(f"Decoded JWT: {decoded}")
         return decoded
     except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
         )
     except DecodeError:
-        print("*************Token invalid*********************")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalid"
         )
