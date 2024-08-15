@@ -25,6 +25,7 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+      - redis
     environment:
       - POSTGRES_USER=${PG_USER}
       - POSTGRES_PASSWORD=${PG_PASS}
@@ -49,6 +50,14 @@ services:
       - POSTGRES_PORT=${PG_PORT}
     env_file:
       - ./.env
+    networks:
+      - home
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
     networks:
       - home
 

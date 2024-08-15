@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import HTTPBearer
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -74,9 +75,34 @@ async def login(user: User = Depends(validate_auth_user)):
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
+redis = Redis.from_url(
+    "redis://redis:6379/0", encoding="utf-8", decode_responses=True
+)
+
+
+async def add_token_to_blacklist(token: str):
+    await redis.set(
+        token, "blacklisted", ex=auth_jwt.access_token_expire_minutes * 60
+    )
+
+
+async def is_token_blacklisted(token: str) -> bool:
+    return await redis.exists(token)
+
+
 @router.post("/logout/", status_code=status.HTTP_200_OK)
-async def logout(token: str = Depends(http_bearer)):
-    # TODO: make token invalid
+async def logout(
+    token: str = Depends(http_bearer),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    token = token.credentials
+    if await is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is already blacklisted",
+        )
+
+    await add_token_to_blacklist(token)
     return {"msg": "Logged out successfully"}
 
 
@@ -118,9 +144,16 @@ async def get_current_user(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> User:
+    token = token.credentials
+    if await is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
+
     public_key = auth_jwt.public_key_path.read_text()
     algorithm = auth_jwt.algorithm
-    payload = utils.decode_jwt(token.credentials, public_key, algorithm)
+    payload = utils.decode_jwt(token, public_key, algorithm)
 
     user_email = payload.get("email")
     if not user_email:
