@@ -2,11 +2,12 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from db.config import settings
-from models.base import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from web_app.db.config import settings
+from web_app.models.base import Base
 
 config = context.config
 
@@ -69,8 +70,9 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-
-    asyncio.run(run_async_migrations())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_async_migrations())
+    # asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

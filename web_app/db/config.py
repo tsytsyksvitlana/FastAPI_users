@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -11,8 +13,13 @@ class Settings(BaseSettings):
     echo: bool = True
 
     class Config:
-        env_file = ".env"
+        env_file: Optional[str] = ".env"
         env_file_encoding = "utf-8"
+
+    def __init__(self, _env_file: Optional[str] = None, **kwargs):
+        if _env_file:
+            self.Config.env_file = _env_file
+        super().__init__(**kwargs)
 
     def url(self):
         return (
