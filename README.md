@@ -49,10 +49,6 @@ docker-compose down -v
 ***
 ## Development
 ### Finish production setup
-### To run tests
-```
-pytest
-```
 ### Pre-commit command
 ```
 pre-commit run --all-files

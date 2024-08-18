@@ -48,6 +48,17 @@ services:
     networks:
       - home
 
+  ipython:
+    build: .
+    command: ipython
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - home
+
   alembic:
     build: .
     command: /bin/sh -c "cd web_app && alembic upgrade head"

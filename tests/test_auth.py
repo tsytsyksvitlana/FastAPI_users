@@ -15,7 +15,7 @@ async def test_health_check(client):
 async def test_register_user(client, db_session):
     response = await client.post(
         "/auth/register/",
-        json={"email": "testuser@example.com", "password": "dSistsy42/S"},
+        json={"email": "testuser@example.com", "password": "dSihhd2dy42/S"},
     )
 
     assert response.status_code == status.HTTP_201_CREATED

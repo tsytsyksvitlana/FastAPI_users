@@ -22,23 +22,18 @@ db_helper = DatabaseHelper(url=settings.url(), echo=settings.echo)
 async def setup_test_db():
     logger.info("Setting up the test database...")
 
-    # Create an engine to the default database
     default_engine = create_async_engine(settings.url(), echo=False)
     test_db_url = test_settings.url()
 
-    # Connect to the default database
     async with default_engine.connect() as conn:
-        # Set isolation level and execute commands
         await conn.execution_options(isolation_level="AUTOCOMMIT")
         await conn.execute(text("DROP DATABASE IF EXISTS test_db;"))
         await conn.execute(text("CREATE DATABASE test_db;"))
 
     await default_engine.dispose()
 
-    # Create the engine for the test database
     engine = create_async_engine(test_db_url, echo=False)
 
-    # Apply migrations to the test database
     alembic_cfg = Config("web_app/alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", test_db_url)
     alembic_cfg.set_main_option("script_location", "web_app/migrations")
@@ -46,9 +41,7 @@ async def setup_test_db():
     logger.info("Database migrations applied.")
 
     yield
-    # Drop the test database after tests
     async with default_engine.connect() as conn:
-        # Set isolation level and execute command
         await conn.execution_options(isolation_level="AUTOCOMMIT")
         await conn.execute(text("DROP DATABASE IF EXISTS test_db;"))
     logger.info("Test database dropped.")
