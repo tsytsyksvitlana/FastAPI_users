@@ -27,13 +27,13 @@ services:
     networks:
       - home
 
-  web:
+  fastapi:
     build: .
-    command: uvicorn web_app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - .:/code
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
+    command: ipython run.py
     depends_on:
       - postgres
       - redis
@@ -45,17 +45,6 @@ services:
       - POSTGRES_PORT=${PG_PORT}
     env_file:
       - ./.env
-    networks:
-      - home
-
-  ipython:
-    build: .
-    command: ipython
-    volumes:
-      - .:/code
-    depends_on:
-      - postgres
-      - redis
     networks:
       - home
 

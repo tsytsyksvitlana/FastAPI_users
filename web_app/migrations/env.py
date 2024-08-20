@@ -72,7 +72,6 @@ def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run_async_migrations())
-    # asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():
