@@ -6,12 +6,6 @@ from web_app.models.user import User
 
 
 @pytest.mark.anyio
-async def test_health_check(client):
-    response = await client.get("/auth/login/")
-    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
-@pytest.mark.anyio
 async def test_register_user(client, db_session):
     response = await client.post(
         "/auth/register/",

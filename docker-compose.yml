@@ -16,14 +16,30 @@ services:
     networks:
       - home
 
+  # postgres_test:
+  #   image: "postgres:alpine"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data/
+  #   ports:
+  #     - "5433:5433"
+  #   environment:
+  #     - POSTGRES_USER=user
+  #     - POSTGRES_PASSWORD=filmdbpass
+  #     - POSTGRES_DB=test_db
+  #     - POSTGRES_HOST=postgres_test
+  #     - POSTGRES_PORT=5433
+  #   env_file:
+  #     - ./.env.test
+  #   networks:
+  #     - home
+
   test:
     build: .
-    command: pytest
+    command: pytest -v
     volumes:
       - .:/code
     depends_on:
-      - postgres
-      - redis
+      - fastapi
     networks:
       - home
 

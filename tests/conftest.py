@@ -30,9 +30,7 @@ async def setup_test_db():
     test_db_url = test_settings.url()
 
     async with default_engine.connect() as conn:
-        await conn.execute(
-            text("COMMIT")
-        )  # ensure the connection is in autocommit mode
+        await conn.execute(text("COMMIT"))
         await conn.execute(text("DROP DATABASE IF EXISTS test_db"))
         await conn.execute(text("CREATE DATABASE test_db"))
 
@@ -46,13 +44,11 @@ async def setup_test_db():
     command.upgrade(alembic_cfg, "head")
     logger.info("Database migrations applied.")
 
-    yield  # This is where the testing happens
+    yield
 
     async with default_engine.connect() as conn:
-        await conn.execute(
-            text("COMMIT")
-        )  # ensure the connection is in autocommit mode
-        await conn.execute(text("DROP DATABASE IF EXISTS test_db"))
+        await conn.execute(text("COMMIT"))
+        await conn.execute(text("DROP DATABASE test_db WITH (FORCE);"))
     logger.info("Test database dropped.")
 
     await engine.dispose()
