@@ -1,5 +1,4 @@
-from typing import Optional
-
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -10,22 +9,28 @@ class Settings(BaseSettings):
     PG_HOST: str
     PG_PORT: str
 
+    TEST_PG_USER: str
+    TEST_PG_PASS: str
+    TEST_PG_NAME: str
+    TEST_PG_HOST: str
+    TEST_PG_PORT: str
+
     echo: bool = True
 
-    class Config:
-        env_file: Optional[str] = ".env"
-        env_file_encoding = "utf-8"
-
-    def __init__(self, _env_file: Optional[str] = None, **kwargs):
-        if _env_file:
-            self.Config.env_file = _env_file
-        super().__init__(**kwargs)
+    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     def url(self):
         return (
             f"postgresql+asyncpg://"
             f"{self.PG_USER}:{self.PG_PASS}@"
             f"{self.PG_HOST}:{self.PG_PORT}/{self.PG_NAME}"
+        )
+
+    def test_db_url(self):
+        return (
+            f"postgresql+asyncpg://"
+            f"{self.TEST_PG_USER}:{self.TEST_PG_PASS}@"
+            f"{self.TEST_PG_HOST}:{self.TEST_PG_PORT}/{self.TEST_PG_NAME}"
         )
 
 
