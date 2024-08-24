@@ -1,6 +1,7 @@
 import re
 from typing import ClassVar
 
+from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -15,9 +16,10 @@ class UserS(BaseModel):
     @field_validator("password")
     def validate_password(cls, v):
         if not cls.PASSWORD_REGEX.match(v):
-            raise ValueError(
-                "Password must be 8-24 characters long, contain digits, "
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Password must be 8-24 characters long, contain digits, "
                 "lowercase and uppercase letters, and special characters "
-                "except for @, \", ', <, >."
+                "except for @, \", ', <, >.",
             )
         return v

@@ -69,7 +69,7 @@ async def register_user(
     session.add(new_user)
     await session.commit()
 
-    return {"msg": "User successfully registered"}
+    return {"detail": "User successfully registered"}
 
 
 @router.post("/login/", response_model=Token)
