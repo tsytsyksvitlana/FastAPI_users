@@ -30,10 +30,11 @@ services:
 
   test:
     build: .
-    command: pytest -v
+    command: /bin/sh -c "sleep 2 && pytest --log-cli-level=DEBUG --log-cli-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'"
     volumes:
       - .:/code
     depends_on:
+      - postgres_test
       - fastapi
     networks:
       - home
@@ -61,7 +62,7 @@ services:
 
   alembic:
     build: .
-    command: /bin/sh -c "cd web_app && alembic upgrade head"
+    command: /bin/sh -c "sleep 1 && cd web_app && alembic upgrade head"
     depends_on:
       - postgres
     environment:

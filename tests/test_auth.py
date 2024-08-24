@@ -11,7 +11,7 @@ async def test_register_user(client, db_session):
         "/auth/register/",
         json={"email": "testuser@example.com", "password": "dSihhd2dy42/S"},
     )
-
+    print(response.json())
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json() == {"msg": "User successfully registered"}
 

@@ -18,6 +18,11 @@ PG_PASS=
 PG_NAME=
 PG_HOST=
 PG_PORT=
+TEST_PG_USER=
+TEST_PG_PASS=
+TEST_PG_NAME=
+TEST_PG_HOST=
+TEST_PG_PORT=
 ```
 ### Generate an RSA private key, of size 2048
 ```
