@@ -25,6 +25,10 @@ async def validate_auth_user(
     password: str = Form(),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> User:
+    """
+    Validates a user's email and password.
+    Raises HTTP 401 if the credentials are invalid.
+    """
     unauthed_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid username or password",
@@ -50,6 +54,10 @@ async def validate_auth_user(
 async def register_user(
     user: UserS, session: AsyncSession = Depends(db_helper.session_getter)
 ):
+    """
+    Registers a new user.
+    Raises HTTP 400 if user already exists.
+    """
     query = select(User).where(User.email == user.email)
     result = await session.execute(query)
     existing_user = result.scalars().first()
@@ -70,6 +78,9 @@ async def register_user(
 
 @router.post("/login/", response_model=Token)
 async def login(user: User = Depends(validate_auth_user)):
+    """
+    Function logs in a user and returns an access token and a refresh token.
+    """
     access_token = create_access_token(user.email)
     refresh_token = create_refresh_token(user.email)
     return Token(access_token=access_token, refresh_token=refresh_token)
@@ -95,6 +106,9 @@ async def logout(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
+    """
+    Logs out a user.
+    """
     token = token.credentials
     if await is_token_blacklisted(token):
         raise HTTPException(
@@ -110,6 +124,11 @@ async def logout(
     "/refresh/", response_model=Token, response_model_exclude_none=True
 )
 async def auth_refresh_jwt(token: str = Depends(http_bearer)):
+    """
+    Refreshes a JWT token.
+    Returns new tokens for valid access or refresh tokens.
+    Returns HTTP 401 for invalid or expired tokens.
+    """
     try:
         token = token.credentials
         public_key = auth_jwt.public_key_path.read_text()
@@ -144,6 +163,13 @@ async def get_current_user(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> User:
+    """
+    Gets the current user based on the JWT token.
+    Checks if the token is blacklisted and validates it.
+    Retrieves and returns the user from the database.
+
+    Raises HTTP 401 if the token is blacklisted, invalid, or user not found.
+    """
     token = token.credentials
     if await is_token_blacklisted(token):
         raise HTTPException(
@@ -181,6 +207,10 @@ async def change_password(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
+    """
+    Changes the password.
+    Raises HTTP 401 for invalid or expired tokens.
+    """
     if not utils.validate_password(
         password=current_password, hashed_password=user.password
     ):
