@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -22,34 +23,50 @@ async def setup_test_db():
     logger.info("Setting up the test database...")
     original_url = settings.url
     settings.url = settings.test_db_url
+
     db_helper.engine.url = settings.url
-    engine = create_async_engine(settings.url, echo=False)
-    async_session = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
+    db_helper.engine = create_async_engine(settings.url, echo=settings.echo)
+    db_helper.session_factory = async_sessionmaker(
+        bind=db_helper.engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
     )
 
-    async with engine.begin() as conn:
+    async with db_helper.engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created.")
-    yield async_session
+
+    alembic_cfg = Config("web_app/alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.url)
+    alembic_cfg.set_main_option("script_location", "web_app/migrations")
+
+    yield db_helper.session_factory
 
     logger.info("Tearing down the test database...")
-    async with engine.begin() as conn:
+    async with db_helper.engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    await db_helper.dispose()
+
     settings.url = original_url
-    db_helper.engine.url = settings.url
-    logger.info("Test database dropped.")
+    db_helper.engine = create_async_engine(settings.url, echo=settings.echo)
+    db_helper.session_factory = async_sessionmaker(
+        bind=db_helper.engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+    logger.info("Test database dropped and original DatabaseHelper restored.")
 
 
 @pytest.fixture(scope="function")
 async def db_session(setup_test_db) -> AsyncSession:
     async_session = setup_test_db
     async with async_session() as session:
-        async with session.begin():
-            for table in reversed(Base.metadata.sorted_tables):
-                await session.execute(table.delete())
+        # async with session.begin():
+        #     for table in reversed(Base.metadata.sorted_tables):
+        #         await session.execute(table.delete())
         yield session
 
 
