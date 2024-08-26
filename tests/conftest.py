@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope="module")
 async def setup_test_db():
     logger.info("Setting up the test database...")
+    default_settings = settings.url
     settings.url = settings.test_db_url
     db_helper.engine.url = settings.url
     engine = create_async_engine(settings.url, echo=False)
@@ -31,13 +32,14 @@ async def setup_test_db():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created.")
-    logger.info("Database migrations applied.")
     yield async_session
 
     logger.info("Tearing down the test database...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+    settings.url = default_settings
+    db_helper.engine.url = settings.url
     logger.info("Test database dropped.")
 
 

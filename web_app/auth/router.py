@@ -54,10 +54,6 @@ async def register_user(
     result = await session.execute(query)
     existing_user = result.scalars().first()
 
-    query = await session.execute(select(User))
-    users = query.scalars().all()
-    print(f"@@@@@@@@@@@@@@@@@@@@@{users}@@@@@@@@@@@@@@@@@@@@@@@")
-
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
