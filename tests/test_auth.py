@@ -88,7 +88,7 @@ async def test_refresh_token(client, db_session, token_index, status) -> None:
 
 test_logout_cases = (
     (0, 200),
-    (None, 401),
+    (0, 401),
 )
 
 

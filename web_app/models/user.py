@@ -12,3 +12,9 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"User(email={self.email})"
+
+    def as_dict(self):
+        return {
+            "email": self.email,
+            "password": self.password,
+        }

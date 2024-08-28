@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+import json
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.auth import utils
-from web_app.auth.config import auth_jwt
+from web_app.auth.config import BLOCK_TIME_SECONDS, MAX_ATTEMPTS, auth_jwt
 from web_app.auth.jwt_helper import (
     Token,
     create_access_token,
@@ -19,32 +21,103 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 http_bearer = HTTPBearer(auto_error=True)
 
+redis = Redis.from_url(
+    "redis://redis:6379/0", encoding="utf-8", decode_responses=True
+)
+
+
+def get_redis_client() -> Redis:
+    return redis
+
+
+async def get_user_from_redis(email: str) -> User | None:
+    """
+    Gets user from Redis based on email.
+    Returns None if no user is found.
+    """
+    user_data = await redis.get(email)
+    if user_data:
+        user_dict = json.loads(user_data)
+        return User(**user_dict)
+
+
+async def set_user_to_redis(email: str, user: User) -> None:
+    """
+    Saves user to Redis.
+    """
+    user_dict = user.as_dict()
+    await redis.set(email, json.dumps(user_dict), ex=300)
+
+
+async def check_block(ip: str, redis: Redis) -> bool:
+    """
+    Returns is ip blocked or not.
+    """
+    block_key = f"block:{ip}"
+    blocked = await redis.get(block_key)
+    return blocked is not None
+
+
+async def increment_attempts(ip: str, redis: Redis):
+    """
+    Increments number of attempts.
+    If amount of retries exceeds MAX_ATTEMPTS, ip blocks
+    for BLOCK_TIME_SECONDS and counter is set to 0.
+    """
+    attempts_key = f"attempts:{ip}"
+    block_key = f"block:{ip}"
+
+    attempts = await redis.incr(attempts_key)
+    if attempts == 1:
+        await redis.expire(attempts_key, BLOCK_TIME_SECONDS)
+
+    if attempts >= MAX_ATTEMPTS:
+        await redis.set(block_key, "blocked", ex=BLOCK_TIME_SECONDS)
+        await redis.delete(attempts_key)
+
+
+async def get_client_ip(request: Request) -> str:
+    """
+    Gets the client's IP address from the request headers.
+    """
+    ip = request.client.host
+    return ip
+
 
 async def validate_auth_user(
     email: str = Form(),
     password: str = Form(),
+    ip: str = Depends(get_client_ip),
+    redis: Redis = Depends(get_redis_client),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> User:
-    """
-    Validates a user's email and password.
-    Raises HTTP 401 if the credentials are invalid.
-    """
     unauthed_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid username or password",
     )
 
-    query = select(User).where(User.email == email)
-    result = await session.execute(query)
-    user = result.scalars().first()
+    if await check_block(ip, redis):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Too many failed login attempts. Try again later.",
+        )
 
+    user = await get_user_from_redis(email)
     if not user:
-        raise unauthed_exc
+        query = select(User).where(User.email == email)
+        result = await session.execute(query)
+        user = result.scalars().first()
+        if user:
+            await set_user_to_redis(email, user)
+        else:
+            await increment_attempts(ip, redis)
+            raise unauthed_exc
 
     if not utils.validate_password(
         password=password,
         hashed_password=user.password,
     ):
+        await increment_attempts(ip, redis)
         raise unauthed_exc
 
     return user
@@ -86,12 +159,10 @@ async def login(user: User = Depends(validate_auth_user)) -> Token:
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
-redis = Redis.from_url(
-    "redis://redis:6379/0", encoding="utf-8", decode_responses=True
-)
-
-
 async def add_token_to_blacklist(token: str) -> None:
+    """
+    Saves token to blacklist and adds it to redis.
+    """
     await redis.set(
         token, "blacklisted", ex=auth_jwt.access_token_expire_minutes * 60
     )
@@ -166,7 +237,7 @@ async def get_current_user(
     """
     Gets the current user based on the JWT token.
     Checks if the token is blacklisted and validates it.
-    Retrieves and returns the user from the database.
+    Retrieves and returns the user from database.
 
     Raises HTTP 401 if the token is blacklisted, invalid, or user not found.
     """

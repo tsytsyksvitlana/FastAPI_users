@@ -17,3 +17,6 @@ auth_jwt = AuthJWT()
 
 PRIVATE_KEY = auth_jwt.private_key_path.read_text()
 PUBLIC_KEY = auth_jwt.public_key_path.read_text()
+
+MAX_ATTEMPTS = 3
+BLOCK_TIME_SECONDS = 300
