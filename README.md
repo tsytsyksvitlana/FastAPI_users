@@ -74,6 +74,10 @@ alembic revision --autogenerate -m "message"
 ```
 exit
 ```
+### To run ipython
+```
+docker-compose up ipython
+```
 
 ### Technology
 

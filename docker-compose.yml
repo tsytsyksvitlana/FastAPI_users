@@ -84,6 +84,22 @@ services:
     networks:
       - home
 
+  ipython:
+    build: .
+    command: ipython
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASS}
+      - POSTGRES_DB=${PG_NAME}
+      - POSTGRES_HOST=${PG_HOST}
+      - POSTGRES_PORT=${PG_PORT}
+    env_file:
+      - ./.env
+    networks:
+      - home
+
 volumes:
   postgres_data:
   test_postgres_data:
