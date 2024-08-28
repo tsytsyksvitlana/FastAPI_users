@@ -15,7 +15,7 @@ from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import UserS
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 http_bearer = HTTPBearer(auto_error=True)
 
@@ -53,7 +53,7 @@ async def validate_auth_user(
 @router.post("/register/", status_code=status.HTTP_201_CREATED)
 async def register_user(
     user: UserS, session: AsyncSession = Depends(db_helper.session_getter)
-):
+) -> dict[str, str]:
     """
     Registers a new user.
     Raises HTTP 400 if user already exists.
@@ -77,7 +77,7 @@ async def register_user(
 
 
 @router.post("/login/", response_model=Token)
-async def login(user: User = Depends(validate_auth_user)):
+async def login(user: User = Depends(validate_auth_user)) -> Token:
     """
     Function logs in a user and returns an access token and a refresh token.
     """
@@ -91,7 +91,7 @@ redis = Redis.from_url(
 )
 
 
-async def add_token_to_blacklist(token: str):
+async def add_token_to_blacklist(token: str) -> None:
     await redis.set(
         token, "blacklisted", ex=auth_jwt.access_token_expire_minutes * 60
     )
@@ -105,7 +105,7 @@ async def is_token_blacklisted(token: str) -> bool:
 async def logout(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
-):
+) -> dict[str, str]:
     """
     Logs out a user.
     """
@@ -123,7 +123,7 @@ async def logout(
 @router.post(
     "/refresh/", response_model=Token, response_model_exclude_none=True
 )
-async def auth_refresh_jwt(token: str = Depends(http_bearer)):
+async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
     """
     Refreshes a JWT token.
     Returns new tokens for valid access or refresh tokens.
@@ -206,7 +206,7 @@ async def change_password(
     new_password: str = Form(),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_helper.session_getter),
-):
+) -> dict[str, str]:
     """
     Changes the password.
     Raises HTTP 401 for invalid or expired tokens.

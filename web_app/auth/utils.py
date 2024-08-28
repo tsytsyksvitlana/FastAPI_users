@@ -5,12 +5,12 @@ import jwt
 from fastapi import HTTPException, status
 from jwt.exceptions import DecodeError, ExpiredSignatureError
 
-from .config import auth_jwt
+from .config import PRIVATE_KEY, PUBLIC_KEY, auth_jwt
 
 
 def encode_jwt(
     payload: dict,
-    key: str = auth_jwt.private_key_path.read_text(),
+    key: str = PRIVATE_KEY,
     algorithm: str = auth_jwt.algorithm,
     expire_minutes: int = auth_jwt.access_token_expire_minutes,
     expire_timedelta: timedelta | None = None,
@@ -29,7 +29,11 @@ def encode_jwt(
     return encoded
 
 
-def decode_jwt(token: str | bytes, public_key: str, algorithm: str):
+def decode_jwt(
+    token: str | bytes,
+    public_key: str = PUBLIC_KEY,
+    algorithm: str = auth_jwt.algorithm,
+):
     try:
         decoded = jwt.decode(token, public_key, algorithms=[algorithm])
         return decoded
@@ -43,11 +47,9 @@ def decode_jwt(token: str | bytes, public_key: str, algorithm: str):
         )
 
 
-def hash_password(
-    password: str,
-) -> bytes:
+def hash_password(password: str) -> bytes:
     salt = bcrypt.gensalt()
-    pwd_bytes: bytes = password.encode()
+    pwd_bytes = password.encode()
     return bcrypt.hashpw(pwd_bytes, salt)
 
 

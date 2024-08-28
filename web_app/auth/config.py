@@ -14,3 +14,6 @@ class AuthJWT(BaseModel):
 
 
 auth_jwt = AuthJWT()
+
+PRIVATE_KEY = auth_jwt.private_key_path.read_text()
+PUBLIC_KEY = auth_jwt.public_key_path.read_text()

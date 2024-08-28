@@ -29,6 +29,9 @@ TEST_PG_PORT=
 mkdir certs
 ```
 ```
+cd certs
+```
+```
 openssl genrsa -out jwt-private.pem 2048
 ```
 ### Extract the public key from the key pair, which can be used in a certificate

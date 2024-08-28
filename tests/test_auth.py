@@ -15,7 +15,7 @@ async def test_register_user(
     client, db_session, email, password, status
 ) -> None:
     response = await client.post(
-        "/auth/register/", json={"email": email, "password": password}
+        "/api/v1/auth/register/", json={"email": email, "password": password}
     )
     assert response.status_code == status
 
@@ -32,7 +32,7 @@ tokens = []
 @pytest.mark.parametrize("email, password, status", test_login_cases)
 async def test_login_user(client, db_session, email, password, status) -> None:
     response = await client.post(
-        "/auth/login/", data={"email": email, "password": password}
+        "/api/v1/auth/login/", data={"email": email, "password": password}
     )
     assert response.status_code == status
     if response.status_code == 200:
@@ -58,7 +58,7 @@ async def test_change_password(
     )
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     response = await client.post(
-        "/auth/change_password/",
+        "/api/v1/auth/change_password/",
         data={
             "current_password": current_password,
             "new_password": new_password,
@@ -82,7 +82,7 @@ async def test_refresh_token(client, db_session, token_index, status) -> None:
         else "invalid_token"
     )
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    response = await client.post("/auth/refresh/", headers=headers)
+    response = await client.post("/api/v1/auth/refresh/", headers=headers)
     assert response.status_code == status
 
 
@@ -100,5 +100,5 @@ async def test_logout_user(client, db_session, token_index, status) -> None:
         else "invalid_token"
     )
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    response = await client.post("/auth/logout/", headers=headers)
+    response = await client.post("/api/v1/auth/logout/", headers=headers)
     assert response.status_code == status
