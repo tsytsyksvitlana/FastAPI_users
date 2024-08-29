@@ -5,10 +5,8 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
+    env_file:
+      - ./.env
     networks:
       - home
     healthcheck:
@@ -21,10 +19,8 @@ services:
     image: "postgres:alpine"
     ports:
       - "5433:5432"
-    environment:
-      - POSTGRES_USER=${TEST_PG_USER}
-      - POSTGRES_PASSWORD=${TEST_PG_PASS}
-      - POSTGRES_DB=${TEST_PG_NAME}
+    env_file:
+      - ./.env.test
     networks:
       - home
 
@@ -49,12 +45,6 @@ services:
     depends_on:
       - postgres
       - redis
-    environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
-      - POSTGRES_HOST=${PG_HOST}
-      - POSTGRES_PORT=${PG_PORT}
     env_file:
       - ./.env
     networks:
@@ -65,12 +55,6 @@ services:
     command: /bin/sh -c "sleep 1 && cd web_app && alembic upgrade head"
     depends_on:
       - postgres
-    environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
-      - POSTGRES_HOST=${PG_HOST}
-      - POSTGRES_PORT=${PG_PORT}
     env_file:
       - ./.env
     networks:
@@ -89,12 +73,6 @@ services:
     command: ipython
     volumes:
       - .:/app
-    environment:
-      - POSTGRES_USER=${PG_USER}
-      - POSTGRES_PASSWORD=${PG_PASS}
-      - POSTGRES_DB=${PG_NAME}
-      - POSTGRES_HOST=${PG_HOST}
-      - POSTGRES_PORT=${PG_PORT}
     env_file:
       - ./.env
     networks:

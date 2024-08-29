@@ -3,17 +3,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PG_USER: str
-    PG_PASS: str
-    PG_NAME: str
-    PG_HOST: str
-    PG_PORT: str
-
-    TEST_PG_USER: str
-    TEST_PG_PASS: str
-    TEST_PG_NAME: str
-    TEST_PG_HOST: str
-    TEST_PG_PORT: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: str
 
     echo: bool = True
 
@@ -23,44 +17,24 @@ class Settings(BaseSettings):
     def url(self):
         return (
             f"postgresql+asyncpg://"
-            f"{self.PG_USER}:{self.PG_PASS}@"
-            f"{self.PG_HOST}:{self.PG_PORT}/{self.PG_NAME}"
+            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
     @url.setter
     def url(self, new_url: str):
         self._update_db_url(new_url)
 
-    @property
-    def test_db_url(self):
-        return (
-            f"postgresql+asyncpg://"
-            f"{self.TEST_PG_USER}:{self.TEST_PG_PASS}@"
-            f"{self.TEST_PG_HOST}:{self.TEST_PG_PORT}/{self.TEST_PG_NAME}"
-        )
-
-    @test_db_url.setter
-    def test_db_url(self, new_test_url: str):
-        self._update_db_url(new_test_url, is_test=True)
-
-    def _update_db_url(self, new_url: str, is_test: bool = False):
+    def _update_db_url(self, new_url: str):
         """
         Function parses url and updates db url accordingly
         """
         user, password, host, port, name = self._parse_url(new_url)
-
-        if is_test:
-            self.TEST_PG_USER = user
-            self.TEST_PG_PASS = password
-            self.TEST_PG_HOST = host
-            self.TEST_PG_PORT = port
-            self.TEST_PG_NAME = name
-        else:
-            self.PG_USER = user
-            self.PG_PASS = password
-            self.PG_HOST = host
-            self.PG_PORT = port
-            self.PG_NAME = name
+        self.POSTGRES_USER = user
+        self.POSTGRES_PASSWORD = password
+        self.POSTGRES_HOST = host
+        self.POSTGRES_PORT = port
+        self.POSTGRES_DB = name
 
     def _parse_url(self, url: str):
         """
@@ -76,3 +50,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+class TestSettings(Settings):
+    model_config = ConfigDict(env_file=".env.test", env_file_encoding="utf-8")
+
+
+test_settings = TestSettings()

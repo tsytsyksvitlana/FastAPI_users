@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from web_app.db.config import settings
+from web_app.db.config import settings, test_settings
 from web_app.db.db_helper import db_helper
 from web_app.main import app
 from web_app.models.base import Base
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 async def setup_test_db():
     logger.info("Setting up the test database...")
     original_url = settings.url
-    settings.url = settings.test_db_url
+    settings.url = test_settings.url
 
     db_helper.engine.url = settings.url
     db_helper.engine = create_async_engine(settings.url, echo=settings.echo)
@@ -64,9 +64,6 @@ async def setup_test_db():
 async def db_session(setup_test_db) -> AsyncSession:
     async_session = setup_test_db
     async with async_session() as session:
-        # async with session.begin():
-        #     for table in reversed(Base.metadata.sorted_tables):
-        #         await session.execute(table.delete())
         yield session
 
 
