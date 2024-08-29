@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 import bcrypt
@@ -6,6 +7,8 @@ from fastapi import HTTPException, status
 from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidTokenError
 
 from .config import PRIVATE_KEY, PUBLIC_KEY, auth_jwt
+
+logger = logging.getLogger(__name__)
 
 
 def encode_jwt(
@@ -38,14 +41,17 @@ def decode_jwt(
         decoded = jwt.decode(token, public_key, algorithms=[algorithm])
         return decoded
     except ExpiredSignatureError:
+        logger.error("Token expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
         )
     except DecodeError:
+        logger.error("Token invalid")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalid"
         )
     except InvalidTokenError:
+        logger.error("Token is not valid")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is not valid",

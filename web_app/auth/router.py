@@ -32,6 +32,8 @@ redis = Redis.from_url(
     "redis://redis:6379/0", encoding="utf-8", decode_responses=True
 )
 
+logger = logging.getLogger(__name__)
+
 
 def get_redis_client() -> Redis:
     return redis
@@ -104,6 +106,9 @@ async def validate_auth_user(
     )
 
     if await check_block(ip, redis):
+        logger.warning(
+            f"IP {ip} is blocked due to too many failed login attempts."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Too many failed login attempts. Try again later.",
@@ -117,6 +122,7 @@ async def validate_auth_user(
         if user:
             await set_user_to_redis(email, user)
         else:
+            logger.warning(f"Login failed for email: {email}. User not found.")
             await increment_attempts(ip, redis)
             raise unauthed_exc
 
@@ -124,6 +130,7 @@ async def validate_auth_user(
         password=password,
         hashed_password=user.password,
     ):
+        logger.warning(f"Login failed for email: {email}. Incorrect password.")
         await increment_attempts(ip, redis)
         raise unauthed_exc
 
@@ -143,6 +150,9 @@ async def register_user(
     existing_user = result.scalars().first()
 
     if existing_user:
+        logger.warning(
+            f"Registration failed. User with email {user.email} already exists."
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists",
@@ -189,6 +199,9 @@ async def logout(
     """
     token = token.credentials
     if await is_token_blacklisted(token):
+        logger.warning(
+            f"Logout attempt with already blacklisted token: {token}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is already blacklisted",
@@ -216,6 +229,7 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
         user_email = payload.get("email")
 
         if not user_email or token_type not in ("access", "refresh"):
+            logger.warning("Token refresh failed due to invalid payload.")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token payload",
@@ -229,7 +243,8 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
             new_access_token = create_access_token(user_email)
             return Token(access_token=new_access_token, refresh_token=token)
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Token refresh failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -249,6 +264,7 @@ async def get_current_user(
     """
     token = token.credentials
     if await is_token_blacklisted(token):
+        logger.warning(f"Token is blacklisted: {token}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is blacklisted",
@@ -259,6 +275,7 @@ async def get_current_user(
 
     user_email = payload.get("email")
     if not user_email:
+        logger.warning("Token validation failed. Invalid token.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
@@ -272,6 +289,7 @@ async def get_current_user(
     result = await session.execute(query)
     user = result.scalars().first()
     if not user:
+        logger.warning(f"User not found for email: {user_email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
@@ -280,9 +298,6 @@ async def get_current_user(
     await set_user_to_redis(user_email, user)
 
     return user
-
-
-logger = logging.getLogger(__name__)
 
 
 @router.post("/change_password/", status_code=status.HTTP_200_OK)
@@ -299,6 +314,10 @@ async def change_password(
     if not utils.validate_password(
         password=current_password, hashed_password=user.password
     ):
+        logger.warning(
+            f"Password change failed for user: {user.email}."
+            f" Incorrect current password."
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect current password",
@@ -318,6 +337,9 @@ async def change_password(
         user = result.scalars().first()
 
         if not user:
+            logger.error(
+                f"User with email {user.email} not found after rollback."
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",

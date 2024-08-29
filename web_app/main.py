@@ -6,15 +6,17 @@ import uvloop
 from fastapi import FastAPI
 
 from web_app.auth.router import router as auth_router
+from web_app.functions.logger import setup_logger
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    setup_logger()
     try:
         logger.info("Starting up...")
     except Exception as e:
