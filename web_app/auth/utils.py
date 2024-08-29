@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import bcrypt
 import jwt
 from fastapi import HTTPException, status
-from jwt.exceptions import DecodeError, ExpiredSignatureError
+from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidTokenError
 
 from .config import PRIVATE_KEY, PUBLIC_KEY, auth_jwt
 
@@ -44,6 +44,11 @@ def decode_jwt(
     except DecodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalid"
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is not valid",
         )
 
 

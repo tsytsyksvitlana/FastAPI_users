@@ -233,12 +233,12 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
 async def get_current_user(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
+    redis: Redis = Depends(get_redis_client),
 ) -> User:
     """
     Gets the current user based on the JWT token.
     Checks if the token is blacklisted and validates it.
-    Retrieves and returns the user from database.
-
+    Retrieves and returns the user from the cache or database.
     Raises HTTP 401 if the token is blacklisted, invalid, or user not found.
     """
     token = token.credentials
