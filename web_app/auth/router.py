@@ -1,13 +1,20 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.auth import utils
-from web_app.auth.config import BLOCK_TIME_SECONDS, MAX_ATTEMPTS, auth_jwt
+from web_app.auth.config import (
+    BLOCK_TIME_SECONDS,
+    MAX_ATTEMPTS,
+    PUBLIC_KEY,
+    auth_jwt,
+)
 from web_app.auth.jwt_helper import (
     Token,
     create_access_token,
@@ -202,9 +209,8 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
     """
     try:
         token = token.credentials
-        public_key = auth_jwt.public_key_path.read_text()
         algorithm = auth_jwt.algorithm
-        payload = utils.decode_jwt(token, public_key, algorithm)
+        payload = utils.decode_jwt(token, PUBLIC_KEY, algorithm)
 
         token_type = payload.get("type")
         user_email = payload.get("email")
@@ -248,9 +254,8 @@ async def get_current_user(
             detail="Token is blacklisted",
         )
 
-    public_key = auth_jwt.public_key_path.read_text()
     algorithm = auth_jwt.algorithm
-    payload = utils.decode_jwt(token, public_key, algorithm)
+    payload = utils.decode_jwt(token, PUBLIC_KEY, algorithm)
 
     user_email = payload.get("email")
     if not user_email:
@@ -258,6 +263,10 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
+
+    cached_user = await get_user_from_redis(user_email)
+    if cached_user:
+        return cached_user
 
     query = select(User).where(User.email == user_email)
     result = await session.execute(query)
@@ -268,7 +277,12 @@ async def get_current_user(
             detail="User not found",
         )
 
+    await set_user_to_redis(user_email, user)
+
     return user
+
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/change_password/", status_code=status.HTTP_200_OK)
@@ -291,8 +305,28 @@ async def change_password(
         )
 
     hashed_new_password = utils.hash_password(new_password).decode("utf-8")
-    user.password = hashed_new_password
-    session.add(user)
-    await session.commit()
+    try:
+        user.password = hashed_new_password
+        await session.flush()
+        await session.commit()
+    except IntegrityError:
+        logger.error("IntegrityError occurred while changing password.")
+        await session.rollback()
+
+        query = select(User).where(User.email == user.email)
+        result = await session.execute(query)
+        user = result.scalars().first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        user.password = hashed_new_password
+        session.add(user)
+        await session.commit()
+
+    await set_user_to_redis(user.email, user)
 
     return {"msg": "Password successfully changed"}
