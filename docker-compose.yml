@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: "postgres:alpine"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+    networks:
+      - home
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres_test:
+    image: "postgres:alpine"
+    ports:
+      - "5433:5432"
+    env_file:
+      - ./.env.test
+    networks:
+      - home
+
+  test:
+    build: .
+    command: /bin/sh -c "sleep 2 && pytest --log-cli-level=DEBUG --log-cli-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'"
+    volumes:
+      - .:/code
+    depends_on:
+      - postgres_test
+      - fastapi
+    networks:
+      - home
+
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: ipython run.py
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./.env
+    networks:
+      - home
+
+  alembic:
+    build: .
+    command: /bin/sh -c "sleep 1 && cd web_app && alembic upgrade head"
+    depends_on:
+      - postgres
+    env_file:
+      - ./.env
+    networks:
+      - home
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - home
+
+  ipython:
+    build: .
+    command: ipython
+    volumes:
+      - .:/app
+    env_file:
+      - ./.env
+    networks:
+      - home
+
+volumes:
+  postgres_data:
+  test_postgres_data:
+
+networks:
+  home:
+    driver: bridge
