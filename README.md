@@ -58,7 +58,7 @@ pre-commit run --all-files
 ```
 ### Migrations
 ```
-docker exec -it fastapi-web-1 /bin/sh
+docker exec -it fastapi-fastapi-1 /bin/sh
 ```
 ```
 cd /code/web_app

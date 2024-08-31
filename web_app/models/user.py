@@ -1,21 +1,29 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 
 
 class User(Base):
-    first_name: str = Column(String(50), nullable=False)
-    last_name: str = Column(String(50), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(
         String, unique=True, index=True, nullable=False
     )
     password: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-    last_activity_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
-    balance: Mapped[int] = mapped_column(Integer, nullable=False)
-    block_status: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    last_activity_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    block_status: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
 
     def __repr__(self) -> str:
         return f"User(email={self.email})"
