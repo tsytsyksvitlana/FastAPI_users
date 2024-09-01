@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import logging
 from datetime import datetime
 
@@ -9,9 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from web_app.db.config import settings
 from web_app.models.base import Base
-from web_app.models.user import (
-    User,  # Assuming your User model is in models.user
-)
+from web_app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -64,40 +63,33 @@ def drop_db() -> None:
     logger.info("Database dropped.")
 
 
-def populate_db() -> None:
+def populate_db(file_path: str) -> None:
     """
-    Populate the database with initial data.
+    Populate the database with initial data from a JSON file.
     """
     logger.info("Populating database with sample data...")
 
     async def async_populate():
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
         async with AsyncSessionLocal() as session:
             async with session.begin():
-                sample_users = [
+                users = [
                     User(
-                        first_name="John",
-                        last_name="Doe",
-                        email="john.doe@example.com",
-                        password="pass123433W0/",
+                        first_name=user["first_name"],
+                        last_name=user["last_name"],
+                        email=user["email"],
+                        password=user["password"],
                         created_at=datetime.now(),
                         updated_at=datetime.now(),
                         last_activity_at=datetime.now(),
-                        balance=1000,
-                        block_status=False,
-                    ),
-                    User(
-                        first_name="Jane",
-                        last_name="Doe",
-                        email="jane.doe@example.com",
-                        password="wueihdsfJJ4*",
-                        created_at=datetime.now(),
-                        updated_at=datetime.now(),
-                        last_activity_at=datetime.now(),
-                        balance=1500,
-                        block_status=False,
-                    ),
+                        balance=user["balance"],
+                        block_status=user["block_status"],
+                    )
+                    for user in data.get("users", [])
                 ]
-                session.add_all(sample_users)
+                session.add_all(users)
                 await session.commit()
 
     asyncio.run(async_populate())
@@ -112,6 +104,12 @@ def main() -> None:
         choices=["create", "drop", "migrate", "populate"],
         help="Command to run: create, drop, migrate, or populate",
     )
+    parser.add_argument(
+        "--file",
+        type=str,
+        help="Path to the JSON file for populating the database",
+        required=False,
+    )
 
     args = parser.parse_args()
 
@@ -122,7 +120,12 @@ def main() -> None:
     elif args.command == "migrate":
         run_migrations()
     elif args.command == "populate":
-        populate_db()
+        if not args.file:
+            logger.error(
+                "JSON file path is required for populating the database."
+            )
+        else:
+            populate_db(args.file)
     else:
         logger.error(f"Unknown command: {args.command}")
 

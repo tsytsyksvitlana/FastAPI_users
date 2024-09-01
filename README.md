@@ -69,6 +69,19 @@ alembic revision --autogenerate -m "message"
 ```
 exit
 ```
+### CLI
+#### Create database
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli create
+```
+#### Drop database
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli drop
+```
+#### Populate database with data
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli populate --file tests/test_data/data.json
+```
 ### To run ipython
 ```
 docker-compose up ipython
