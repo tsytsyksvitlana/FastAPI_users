@@ -159,7 +159,12 @@ async def register_user(
         )
 
     hashed_password = utils.hash_password(user.password).decode("utf-8")
-    new_user = User(email=user.email, password=hashed_password)
+    new_user = User(
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        password=hashed_password,
+    )
     session.add(new_user)
     await session.commit()
 
