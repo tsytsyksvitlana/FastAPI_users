@@ -22,7 +22,7 @@ from web_app.auth.jwt_helper import (
 )
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
-from web_app.schemas.user import UserS
+from web_app.schemas.user import UserCreateS
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -139,7 +139,7 @@ async def validate_auth_user(
 
 @router.post("/register/", status_code=status.HTTP_201_CREATED)
 async def register_user(
-    user: UserS, session: AsyncSession = Depends(db_helper.session_getter)
+    user: UserCreateS, session: AsyncSession = Depends(db_helper.session_getter)
 ) -> dict[str, str]:
     """
     Registers a new user.

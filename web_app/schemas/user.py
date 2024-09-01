@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 
-class UserS(BaseModel):
+class UserCreateS(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     email: EmailStr
@@ -34,10 +34,22 @@ class UserS(BaseModel):
         return v
 
 
-class UserResponseSchema(BaseModel):
+class UserResponseS(BaseModel):
     id: int
     first_name: Optional[str]
     last_name: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
+    last_activity_at: datetime
+    balance: int
+
+    class Config:
+        orm_mode = True
+
+
+class UserProfileS(BaseModel):
+    first_name: str
+    last_name: str
     created_at: datetime
     updated_at: Optional[datetime]
     last_activity_at: datetime

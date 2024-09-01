@@ -5,14 +5,15 @@ from sqlalchemy import asc, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from web_app.auth.router import get_current_user
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
-from web_app.schemas.user import UserResponseSchema
+from web_app.schemas.user import UserProfileS, UserResponseS
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 
-@router.get("/", response_model=List[UserResponseSchema])
+@router.get("/", response_model=List[UserResponseS])
 async def get_users(
     id: Optional[int] = Query(None),
     first_name: Optional[str] = Query(None),
@@ -57,3 +58,37 @@ async def get_users(
     users = result.scalars().all()
 
     return users
+
+
+@router.get("/profile/", response_model=List[UserProfileS])
+async def retrieve_profiles(
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    query = select(User).where(
+        User.first_name.isnot(None), User.last_name.isnot(None)
+    )
+    result = await session.execute(query)
+    profiles = result.scalars().all()
+
+    return profiles
+
+
+@router.get("/profile/me/", response_model=UserProfileS)
+async def retrieve_profile(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    query = select(User).where(
+        User.email == user.email,
+        User.first_name.isnot(None),
+        User.last_name.isnot(None),
+    )
+    result = await session.execute(query)
+    user_profile = result.scalars().first()
+
+    if not user_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
+
+    return user_profile
