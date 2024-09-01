@@ -8,6 +8,7 @@ from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from web_app.auth import utils
 from web_app.db.config import settings
 from web_app.models.base import Base
 from web_app.models.user import User
@@ -80,7 +81,9 @@ def populate_db(file_path: str) -> None:
                         first_name=user["first_name"],
                         last_name=user["last_name"],
                         email=user["email"],
-                        password=user["password"],
+                        password=utils.hash_password(user["password"]).decode(
+                            "utf-8"
+                        ),
                         created_at=datetime.now(),
                         updated_at=datetime.now(),
                         last_activity_at=datetime.now(),

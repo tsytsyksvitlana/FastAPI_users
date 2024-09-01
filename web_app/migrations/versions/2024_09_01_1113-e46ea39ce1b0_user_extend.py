@@ -1,8 +1,8 @@
-"""user extended model
+"""user extend
 
-Revision ID: 44eb7f6b0541
+Revision ID: e46ea39ce1b0
 Revises: e30f6720c2e4
-Create Date: 2024-08-31 18:04:20.296661
+Create Date: 2024-09-01 11:13:44.856254
 
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "44eb7f6b0541"
+revision: str = "e46ea39ce1b0"
 down_revision: Union[str, None] = "e30f6720c2e4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,13 +27,18 @@ def upgrade() -> None:
         "users", sa.Column("last_name", sa.String(length=50), nullable=True)
     )
     op.add_column(
-        "users", sa.Column("created_at", sa.DateTime(), nullable=False)
+        "users",
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.add_column(
-        "users", sa.Column("updated_at", sa.DateTime(), nullable=True)
+        "users",
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.add_column(
-        "users", sa.Column("last_activity_at", sa.DateTime(), nullable=False)
+        "users",
+        sa.Column(
+            "last_activity_at", sa.DateTime(timezone=True), nullable=False
+        ),
     )
     op.add_column("users", sa.Column("balance", sa.Integer(), nullable=False))
     op.add_column(
