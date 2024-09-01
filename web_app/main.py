@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import uvloop
 from fastapi import FastAPI
 
+from web_app.api.v1.routers.users.router import router as users_router
 from web_app.auth.router import router as auth_router
 from web_app.functions.logger import setup_logger
 
@@ -32,6 +33,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Fox project", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(users_router)
 
 
 @app.get("/")
