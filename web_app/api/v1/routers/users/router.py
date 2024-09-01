@@ -8,7 +8,7 @@ from sqlalchemy.future import select
 from web_app.auth.router import get_current_user
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
-from web_app.schemas.user import UserProfileS, UserResponseS
+from web_app.schemas.user import UserProfileS, UserResponseS, UserUpdateS
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -90,5 +90,31 @@ async def retrieve_profile(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
         )
+
+    return user_profile
+
+
+@router.put("/profile/", response_model=UserUpdateS)
+async def update_profile(
+    update_data: UserUpdateS,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    query = select(User).where(User.email == user.email)
+    result = await session.execute(query)
+    user_profile = result.scalars().first()
+
+    if not user_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    updated_fields = update_data.dict(exclude_unset=True)
+
+    for field, value in updated_fields.items():
+        setattr(user_profile, field, value)
+
+    session.add(user_profile)
+    await session.commit()
 
     return user_profile

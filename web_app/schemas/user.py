@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import ClassVar, Optional
 
 from fastapi import HTTPException, status
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserCreateS(BaseModel):
@@ -32,6 +32,12 @@ class UserCreateS(BaseModel):
                 "and special characters except for @, \", ', <, >.",
             )
         return v
+
+
+class UserUpdateS(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    balance: Optional[int] = Field(None, ge=0)
 
 
 class UserResponseS(BaseModel):
