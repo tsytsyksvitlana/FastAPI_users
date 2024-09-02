@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -42,3 +42,10 @@ class User(Base):
             "email": self.email,
             "password": self.password,
         }
+
+    @staticmethod
+    def update_timestamp(mapper, connection, target):
+        target.updated_at = datetime.now(timezone.utc)
+
+
+event.listen(User, "before_update", User.update_timestamp)

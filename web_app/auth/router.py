@@ -11,6 +11,7 @@ from sqlalchemy.future import select
 from web_app.auth import utils
 from web_app.auth.config import (
     BLOCK_TIME_SECONDS,
+    LOGIN_BONUS,
     MAX_ATTEMPTS,
     PUBLIC_KEY,
     auth_jwt,
@@ -172,10 +173,14 @@ async def register_user(
 
 
 @router.post("/login/", response_model=Token)
-async def login(user: User = Depends(validate_auth_user)) -> Token:
-    """
-    Function logs in a user and returns an access token and a refresh token.
-    """
+async def login(
+    user: User = Depends(validate_auth_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+) -> Token:
+    if user.first_name and user.last_name:
+        user.balance += LOGIN_BONUS
+        session.add(user)
+        await session.commit()
     access_token = create_access_token(user.email)
     refresh_token = create_refresh_token(user.email)
     return Token(access_token=access_token, refresh_token=refresh_token)
