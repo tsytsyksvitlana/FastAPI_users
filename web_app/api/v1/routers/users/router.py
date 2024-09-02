@@ -8,7 +8,12 @@ from sqlalchemy.future import select
 from web_app.auth.router import get_current_user
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
-from web_app.schemas.user import UserProfileS, UserResponseS, UserUpdateS
+from web_app.schemas.user import (
+    BalanceUpdateS,
+    UserProfileS,
+    UserResponseS,
+    UserUpdateS,
+)
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -113,6 +118,48 @@ async def update_profile(
 
     for field, value in updated_fields.items():
         setattr(user_profile, field, value)
+
+    session.add(user_profile)
+    await session.commit()
+
+    return user_profile
+
+
+@router.get("/{id}/balance/", response_model=int)
+async def get_balance(
+    id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    query = select(User.balance).where(User.id == id)
+    result = await session.execute(query)
+    balance = result.scalar()
+
+    if balance is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    return balance
+
+
+@router.put("/{id}/balance/", response_model=UserResponseS)
+async def update_balance(
+    id: int,
+    update_data: BalanceUpdateS,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    query = select(User).where(User.id == id)
+    result = await session.execute(query)
+    user_profile = result.scalars().first()
+
+    if not user_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_profile.balance = update_data.balance
 
     session.add(user_profile)
     await session.commit()

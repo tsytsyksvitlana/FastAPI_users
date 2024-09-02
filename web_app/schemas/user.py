@@ -63,3 +63,7 @@ class UserProfileS(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class BalanceUpdateS(BaseModel):
+    balance: int
