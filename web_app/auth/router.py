@@ -107,13 +107,14 @@ async def validate_auth_user(
     )
 
     if await check_block(ip, redis):
-        logger.warning(
-            f"IP {ip} is blocked due to too many failed login attempts."
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Too many failed login attempts. Try again later.",
-        )
+        if not ip == "127.0.0.1":
+            logger.warning(
+                f"IP {ip} is blocked due to too many failed login attempts."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Too many failed login attempts. Try again later.",
+            )
 
     user = await get_user_from_redis(email)
     if not user:

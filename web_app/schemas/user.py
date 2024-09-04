@@ -50,7 +50,7 @@ class UserResponseS(BaseModel):
     balance: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserProfileS(BaseModel):
@@ -62,7 +62,7 @@ class UserProfileS(BaseModel):
     balance: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class BalanceUpdateS(BaseModel):

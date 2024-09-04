@@ -70,6 +70,8 @@ async def db_session(setup_test_db) -> AsyncSession:
 
 @pytest.fixture(scope="function")
 async def create_default_users(db_session):
+    logger.info("Creating default users...")
+
     default_users = [
         {
             "first_name": "John",
@@ -92,11 +94,19 @@ async def create_default_users(db_session):
         },
     ]
 
-    for user_data in default_users:
-        user = User(**user_data)
-        db_session.add(user)
+    try:
+        for user_data in default_users:
+            logger.info(f"Adding user: {user_data['email']} to the database.")
+            user = User(**user_data)
+            db_session.add(user)
 
-    await db_session.commit()
+        await db_session.commit()
+        logger.info("Users committed to the database.")
+    except Exception as e:
+        logger.error(f"Error while creating users: {e}")
+        await db_session.rollback()
+        raise
+
     return default_users
 
 
