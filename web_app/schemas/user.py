@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import ClassVar, Optional
 
 from fastapi import HTTPException, status
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserCreateS(BaseModel):
@@ -49,8 +49,7 @@ class UserResponseS(BaseModel):
     last_activity_at: datetime
     balance: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
 class UserProfileS(BaseModel):
@@ -61,8 +60,7 @@ class UserProfileS(BaseModel):
     last_activity_at: datetime
     balance: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
 class BalanceUpdateS(BaseModel):
