@@ -59,6 +59,7 @@ async def test_login_user(client, db_session, email, password, status) -> None:
 
 test_change_password_cases = (
     (0, "dSihhd2dy42/S", "newpassword1/S", 200),
+    (0, "newpassword1/S", "dSihhd2dy42/S", 200),
     (0, "wrongpassword", "newpassword1/S", 401),
     (None, "somepassword", "newpassword1/S", 401),
 )
@@ -120,10 +121,7 @@ test_logout_cases = (
 
 @pytest.mark.parametrize("token_index, status", test_logout_cases)
 async def test_logout_user(client, db_session, token_index, status) -> None:
-    if token_index is not None and len(tokens) > token_index:
-        token = tokens[token_index]["access_token"]
-    else:
-        token = "invalid_token"
+    token = tokens[token_index].get("access_token")
 
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     response = await client.post("/api/v1/auth/logout/", headers=headers)
