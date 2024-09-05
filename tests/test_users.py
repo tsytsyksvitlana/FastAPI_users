@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from web_app.auth import utils
@@ -18,7 +19,7 @@ async def mock_redis():
                 {
                     "first_name": "John",
                     "last_name": "Doe",
-                    "email": "testuserrouter1@example.com",
+                    "email": "testuserrouter11@example.com",
                     "password": utils.hash_password("dshbhjHH03/").decode(
                         "utf-8"
                     ),
@@ -26,11 +27,30 @@ async def mock_redis():
                 }
             )
         )
+        mock_redis.set = AsyncMock(return_value=True)
+
         yield mock_redis
 
 
 @pytest.fixture
 async def test_user_token(client, db_session, mock_redis):
+    # Check if the user exists in the database
+    existing_user = await db_session.execute(
+        text("SELECT id FROM users WHERE email = 'testuserrouter1@example.com'")
+    )
+    user_id = existing_user.scalar()
+
+    if not user_id:
+        response = await client.post(
+            "/api/v1/auth/register/",
+            json={
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "testuserrouter1@example.com",
+                "password": "dshbhjHH03/",
+            },
+        )
+
     response = await client.post(
         "/api/v1/auth/login/",
         data={
@@ -90,22 +110,20 @@ async def test_retrieve_profile(client, test_user_token: str):
     assert "last_name" in user_profile
 
 
-# test_get_balance_cases = [
-#     (1, 200),
-#     (999, 404),
-# ]
-#
-#
-# @pytest.mark.parametrize(
-#     "user_id, expected_status", test_get_balance_cases
-# )
-# async def test_get_balance(
-#     client, user_id: int, expected_status: int, test_user_token: str
-# ):
-#     response = await client.get(
-#         f"/api/v1/users/{user_id}/balance/",
-#         headers={"Authorization": f"Bearer {test_user_token}"},
-#     )
-#     assert response.status_code == expected_status
-#     if expected_status == 200:
-#         assert isinstance(response.json(), int)
+test_get_balance_cases = [
+    (1, 200),
+    (999, 404),
+]
+
+
+@pytest.mark.parametrize("user_id, expected_status", test_get_balance_cases)
+async def test_get_balance(
+    client, user_id: int, expected_status: int, test_user_token: str
+):
+    response = await client.get(
+        f"/api/v1/users/{user_id}/balance/",
+        headers={"Authorization": f"Bearer {test_user_token}"},
+    )
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert isinstance(response.json(), int)
