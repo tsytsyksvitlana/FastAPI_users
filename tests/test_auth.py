@@ -3,21 +3,6 @@ import pytest
 pytestmark = pytest.mark.anyio
 
 
-@pytest.fixture
-async def valid_tokens(client, db_session):
-    tokens = []
-    login_cases = [
-        ("testuser1@example.com", "dSihhd2dy42/S"),
-    ]
-    for email, password in login_cases:
-        response = await client.post(
-            "/api/v1/auth/login/", data={"email": email, "password": password}
-        )
-        if response.status_code == 200:
-            tokens.append(response.json())
-    return tokens
-
-
 test_register_cases = (
     ("testuser1@example.com", "dSihhd2dy42/S", 201),
     ("testuser1@example.com", "dSihhd2dy42/S", 400),
@@ -72,7 +57,6 @@ test_change_password_cases = (
 async def test_change_password(
     client,
     db_session,
-    valid_tokens,
     token_index,
     current_password,
     new_password,
