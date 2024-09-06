@@ -113,8 +113,7 @@ async def update_profile(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-
-    updated_fields = update_data.dict(exclude_unset=True)
+    updated_fields = update_data.model_dump(exclude_unset=True)
 
     for field, value in updated_fields.items():
         setattr(user_profile, field, value)
