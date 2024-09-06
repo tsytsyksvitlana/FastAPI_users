@@ -1,8 +1,11 @@
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from web_app.auth import utils
 
 pytestmark = pytest.mark.anyio
 
@@ -25,7 +28,7 @@ async def test_user_token(client, db_session, mock_redis):
     user_id = existing_user.scalar()
 
     if not user_id:
-        response = await client.post(
+        await client.post(
             "/api/v1/auth/register/",
             json={
                 "first_name": "John",
@@ -44,6 +47,60 @@ async def test_user_token(client, db_session, mock_redis):
     )
     assert response.status_code == 200
     return response.json().get("access_token")
+
+
+@pytest.fixture
+async def populate_users(db_session: AsyncSession):
+    default_users = [
+        {
+            "first_name": "Alice",
+            "last_name": "Wonderland",
+            "email": "alice@example.com",
+            "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
+            "balance": 100,
+            "block_status": False,
+            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
+            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
+            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+        },
+        {
+            "first_name": None,
+            "last_name": None,
+            "email": "bob@example.com",
+            "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
+            "balance": 200,
+            "block_status": False,
+            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
+            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
+            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+        },
+        {
+            "first_name": "Charlie",
+            "last_name": "Brown",
+            "email": "charlie@example.com",
+            "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
+            "balance": 300,
+            "block_status": False,
+            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
+            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
+            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+        },
+    ]
+
+    for user_data in default_users:
+        await db_session.execute(
+            text(
+                "INSERT INTO users (first_name, last_name, email, "
+                "password, balance, block_status, "
+                "created_at, updated_at, last_activity_at) "
+                "VALUES (:first_name, :last_name, :email, :password, :balance, "
+                ":block_status, :created_at, :updated_at, :last_activity_at)"
+            ),
+            user_data,
+        )
+
+    await db_session.commit()
+    yield
 
 
 test_get_users_cases = [
@@ -77,9 +134,12 @@ async def test_get_users(
             assert error_detail == "Invalid sort_order field: invalid_order"
 
 
-async def test_retrieve_profiles(client, db_session: AsyncSession):
+async def test_retrieve_profiles(
+    client, db_session: AsyncSession, populate_users
+):
     response = await client.get("/api/v1/users/profile/")
     assert response.status_code == 200
+    assert len(response.json()) == 2
     assert isinstance(response.json(), list)
 
 
