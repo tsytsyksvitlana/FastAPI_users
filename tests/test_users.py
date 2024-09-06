@@ -1,11 +1,8 @@
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from web_app.auth import utils
 
 pytestmark = pytest.mark.anyio
 
@@ -14,19 +11,7 @@ pytestmark = pytest.mark.anyio
 async def mock_redis():
     with patch("web_app.auth.router.redis", autospec=True) as mock_redis:
         mock_redis.exists = AsyncMock(return_value=0)
-        mock_redis.get = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "email": "testuserrouter11@example.com",
-                    "password": utils.hash_password("dshbhjHH03/").decode(
-                        "utf-8"
-                    ),
-                    "balance": 10,
-                }
-            )
-        )
+        mock_redis.get = AsyncMock(return_value=(""))
         mock_redis.set = AsyncMock(return_value=True)
 
         yield mock_redis
@@ -126,3 +111,64 @@ async def test_get_balance(
     assert response.status_code == expected_status
     if expected_status == 200:
         assert isinstance(response.json(), int)
+
+
+test_update_profile_cases = [
+    ({"first_name": "Jane", "last_name": "Doe"}, 200),
+    ({"first_name": "Jane", "last_name": "Doe", "balance": -10}, 422),
+    ({"first_name": ""}, 200),
+    ({"balance": 10}, 200),
+]
+
+
+@pytest.mark.parametrize(
+    "update_data, expected_status", test_update_profile_cases
+)
+async def test_update_profile(
+    client, update_data: dict, expected_status: int, test_user_token: str
+):
+    response = await client.put(
+        "/api/v1/users/profile/",
+        json=update_data,
+        headers={"Authorization": f"Bearer {test_user_token}"},
+    )
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        updated_user = response.json()
+        for field, value in update_data.items():
+            if value:
+                assert updated_user[field] == value
+
+
+test_update_balance_cases = [
+    (1, {"balance": 100}, 200),
+    (999, {"balance": 100}, 404),
+    (1, {"balance": -50}, 422),
+]
+
+
+@pytest.mark.parametrize(
+    "user_id, update_data, expected_status", test_update_balance_cases
+)
+async def test_update_balance(
+    client,
+    user_id: int,
+    update_data: dict,
+    expected_status: int,
+    test_user_token: str,
+):
+    response = await client.put(
+        f"/api/v1/users/{user_id}/balance/",
+        json=update_data,
+        headers={"Authorization": f"Bearer {test_user_token}"},
+    )
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        updated_user = response.json()
+        assert updated_user["balance"] == update_data["balance"]
+    elif expected_status == 404:
+        assert response.json().get("detail") == "User not found"
+    elif expected_status == 422:
+        assert response.json().get("detail")

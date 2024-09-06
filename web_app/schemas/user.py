@@ -64,4 +64,4 @@ class UserProfileS(BaseModel):
 
 
 class BalanceUpdateS(BaseModel):
-    balance: int
+    balance: Optional[int] = Field(None, ge=0)

@@ -1,10 +1,7 @@
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import text
-
-from web_app.auth import utils
 
 pytestmark = pytest.mark.anyio
 
@@ -13,19 +10,7 @@ pytestmark = pytest.mark.anyio
 async def mock_redis():
     with patch("web_app.auth.router.redis", autospec=True) as mock_redis:
         mock_redis.exists = AsyncMock(return_value=0)
-        mock_redis.get = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "email": "testuserrouter11@example.com",
-                    "password": utils.hash_password("dshbhjHH03/").decode(
-                        "utf-8"
-                    ),
-                    "balance": 10,
-                }
-            )
-        )
+        mock_redis.get = AsyncMock(return_value=(""))
         mock_redis.set = AsyncMock(return_value=True)
 
         yield mock_redis
