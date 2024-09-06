@@ -69,6 +69,10 @@ alembic revision --autogenerate -m "message"
 ```
 exit
 ```
+### Testing
+```
+docker exec -it fastapi-fastapi-1 pytest
+```
 ### CLI
 #### Create database
 ```

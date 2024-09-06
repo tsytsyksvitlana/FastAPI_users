@@ -24,17 +24,6 @@ services:
     networks:
       - home
 
-  test:
-    build: .
-    command: /bin/sh -c "sleep 2 && pytest -v"
-    volumes:
-      - .:/code
-    depends_on:
-      - postgres_test
-      - fastapi
-    networks:
-      - home
-
   fastapi:
     build: .
     ports:
