@@ -34,7 +34,6 @@ async def mock_redis():
 
 @pytest.fixture
 async def test_user_token(client, db_session, mock_redis):
-    # Check if the user exists in the database
     existing_user = await db_session.execute(
         text("SELECT id FROM users WHERE email = 'testuserrouter1@example.com'")
     )

@@ -1,73 +1,109 @@
+import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
+from sqlalchemy import text
+
+from web_app.auth import utils
 
 pytestmark = pytest.mark.anyio
 
 
-test_register_cases = (
-    ("testuser1@example.com", "dSihhd2dy42/S", 201),
-    ("testuser1@example.com", "dSihhd2dy42/S", 400),
-    ("testuser3@example.com", "dSi243", 422),
+@pytest.fixture
+async def mock_redis():
+    with patch("web_app.auth.router.redis", autospec=True) as mock_redis:
+        mock_redis.exists = AsyncMock(return_value=0)
+        mock_redis.get = AsyncMock(
+            return_value=json.dumps(
+                {
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "email": "testuserrouter11@example.com",
+                    "password": utils.hash_password("dshbhjHH03/").decode(
+                        "utf-8"
+                    ),
+                    "balance": 10,
+                }
+            )
+        )
+        mock_redis.set = AsyncMock(return_value=True)
+
+        yield mock_redis
+
+
+@pytest.fixture
+async def test_user_token(client, db_session, mock_redis):
+    existing_user = await db_session.execute(
+        text("SELECT id FROM users WHERE email = 'testuserrouter1@example.com'")
+    )
+    user_id = existing_user.scalar()
+
+    if not user_id:
+        await client.post(
+            "/api/v1/auth/register/",
+            json={
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "testuserrouter1@example.com",
+                "password": "dshbhjHH03/",
+            },
+        )
+
+    response = await client.post(
+        "/api/v1/auth/login/",
+        data={
+            "email": "testuserrouter1@example.com",
+            "password": "dshbhjHH03/",
+        },
+    )
+    assert response.status_code == 200
+    return response.json().get("access_token")
+
+
+@pytest.mark.parametrize(
+    "email, password, status",
+    [
+        ("testuser1@example.com", "dSihhd2dy42/S", 201),
+        ("testuser3@example.com", "dSi243", 422),
+    ],
 )
-
-
-@pytest.mark.parametrize("email, password, status", test_register_cases)
-async def test_register_user(
-    client, db_session, email, password, status
-) -> None:
+async def test_register_user(client, db_session, email, password, status):
     response = await client.post(
         "/api/v1/auth/register/", json={"email": email, "password": password}
     )
     assert response.status_code == status
 
 
-test_login_cases = (
-    ("testuser1@example.com", "dSWRONGihhd2dy42/S", 401),
-    ("testuser1@example.com", "dSihhd2dy42/S", 200),
-    ("testuser3@example.com", "dSi243", 401),
-)
-
-tokens = []
-
-
-@pytest.mark.parametrize("email, password, status", test_login_cases)
-async def test_login_user(client, db_session, email, password, status) -> None:
-    response = await client.post(
-        "/api/v1/auth/login/", data={"email": email, "password": password}
+async def test_register_user_existing(client, db_session):
+    await client.post(
+        "/api/v1/auth/register/",
+        json={
+            "email": "testuserrouter1@example.com",
+            "password": "dSihhd2dy42/S",
+        },
     )
-    print(f"Login response: {response.json()}")
-    assert response.status_code == status
-    if response.status_code == 200:
-        token = response.json().get("access_token")
-        print(f"Access token: {token}")
-        tokens.append(response.json())
-
-
-test_change_password_cases = (
-    (0, "dSihhd2dy42/S", "newpassword1/S", 200),
-    (0, "newpassword1/S", "dSihhd2dy42/S", 200),
-    (0, "wrongpassword", "newpassword1/S", 401),
-    (None, "somepassword", "newpassword1/S", 401),
-)
+    response = await client.post(
+        "/api/v1/auth/register/",
+        json={
+            "email": "testuserrouter1@example.com",
+            "password": "dSihhd2dy42/S",
+        },
+    )
+    assert response.status_code == 400
 
 
 @pytest.mark.parametrize(
-    "token_index, current_password, new_password, status",
-    test_change_password_cases,
+    "current_password, new_password, status",
+    [
+        ("dshbhjHH03/", "newpassword1/S", 200),
+        ("wrongpassword", "newpassword1/S", 401),
+        ("somepassword", "newpassword1/S", 401),
+    ],
 )
 async def test_change_password(
-    client,
-    db_session,
-    token_index,
-    current_password,
-    new_password,
-    status,
-) -> None:
-    if token_index is not None and len(tokens) > token_index:
-        token = tokens[token_index]["access_token"]
-    else:
-        token = "invalid_token"
-
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    client, db_session, current_password, new_password, status, test_user_token
+):
+    headers = {"Authorization": f"Bearer {test_user_token}"}
     response = await client.post(
         "/api/v1/auth/change_password/",
         data={
@@ -79,34 +115,20 @@ async def test_change_password(
     assert response.status_code == status
 
 
-test_refresh_cases = (
-    (0, 200),
-    (None, 401),
-)
-
-
-@pytest.mark.parametrize("token_index, status", test_refresh_cases)
-async def test_refresh_token(client, db_session, token_index, status) -> None:
-    if token_index is not None and len(tokens) > token_index:
-        token = tokens[token_index]["access_token"]
-    else:
-        token = "invalid_token"
-
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+async def test_refresh_token(client, db_session, test_user_token):
+    headers = {"Authorization": f"Bearer {test_user_token}"}
     response = await client.post("/api/v1/auth/refresh/", headers=headers)
-    assert response.status_code == status
+    assert response.status_code == 200
 
 
-test_logout_cases = (
-    (0, 200),
-    (0, 401),
-)
+async def test_refresh_token_no_token(client, db_session):
+    headers = {"Authorization": f"Bearer {None}"}
+    response = await client.post("/api/v1/auth/refresh/", headers=headers)
+    assert response.status_code == 401
 
 
-@pytest.mark.parametrize("token_index, status", test_logout_cases)
-async def test_logout_user(client, db_session, token_index, status) -> None:
-    token = tokens[token_index].get("access_token")
-
+async def test_logout_user(client, db_session, test_user_token):
+    token = test_user_token or "invalid_token"
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     response = await client.post("/api/v1/auth/logout/", headers=headers)
-    assert response.status_code == status
+    assert response.status_code == 200

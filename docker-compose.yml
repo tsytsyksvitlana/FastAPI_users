@@ -26,7 +26,7 @@ services:
 
   test:
     build: .
-    command: /bin/sh -c "sleep 2 && pytest --log-cli-level=INFO --log-cli-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'"
+    command: /bin/sh -c "sleep 2 && pytest -v"
     volumes:
       - .:/code
     depends_on:
