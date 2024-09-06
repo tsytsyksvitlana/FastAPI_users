@@ -104,27 +104,36 @@ async def populate_users(db_session: AsyncSession):
 
 
 test_get_users_cases = [
-    ({}, 200),
-    ({"first_name": "John"}, 200),
-    ({"sort_by": "balance", "sort_order": "desc"}, 200),
-    ({"sort_by": "invalid_field"}, 400),
-    ({"sort_order": "invalid_order"}, 400),
+    ({}, 200, 3),
+    ({"first_name": "Alice"}, 200, 1),
+    ({"sort_by": "balance", "sort_order": "desc"}, 200, 3),
+    ({"sort_by": "invalid_field"}, 400, 0),
+    ({"sort_order": "invalid_order"}, 400, 0),
 ]
 
 
-@pytest.mark.parametrize("params, expected_status", test_get_users_cases)
+@pytest.mark.parametrize(
+    "params, expected_status, expected_count", test_get_users_cases
+)
 async def test_get_users(
-    client, db_session: AsyncSession, params: dict, expected_status: int
+    client,
+    populate_users,
+    db_session: AsyncSession,
+    params: dict,
+    expected_status: int,
+    expected_count: int,
 ):
     response = await client.get("/api/v1/users/", params=params)
     assert response.status_code == expected_status
 
     if expected_status == 200:
-        assert isinstance(response.json(), list)
+        json_response = response.json()
+        assert isinstance(json_response, list)
+        assert len(json_response) == expected_count
         if "first_name" in params:
             assert all(
                 user["first_name"] == params["first_name"]
-                for user in response.json()
+                for user in json_response
             )
     elif expected_status == 400:
         error_detail = response.json().get("detail", "")
