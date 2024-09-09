@@ -8,7 +8,9 @@ pytestmark = pytest.mark.anyio
 
 @pytest.fixture
 async def mock_redis():
-    with patch("web_app.auth.router.redis", autospec=True) as mock_redis:
+    with patch(
+        "web_app.api.v1.routers.auth.router.redis", autospec=True
+    ) as mock_redis:
         mock_redis.exists = AsyncMock(return_value=0)
         mock_redis.get = AsyncMock(return_value=(""))
         mock_redis.set = AsyncMock(return_value=True)

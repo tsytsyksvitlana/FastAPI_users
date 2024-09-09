@@ -8,7 +8,7 @@ from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from web_app.auth import utils
+from web_app.bl.auth import utils
 from web_app.db.config import settings
 from web_app.models.base import Base
 from web_app.models.user import User

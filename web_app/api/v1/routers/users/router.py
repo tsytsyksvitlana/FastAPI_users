@@ -5,7 +5,7 @@ from sqlalchemy import asc, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from web_app.auth.router import get_current_user
+from web_app.api.v1.routers.auth.router import get_current_user
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import (

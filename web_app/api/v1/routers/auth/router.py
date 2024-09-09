@@ -8,15 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from web_app.auth import utils
-from web_app.auth.config import (
+from web_app.bl.auth import utils
+from web_app.bl.auth.config import (
     BLOCK_TIME_SECONDS,
     LOGIN_BONUS,
     MAX_ATTEMPTS,
     PUBLIC_KEY,
     auth_jwt,
 )
-from web_app.auth.jwt_helper import (
+from web_app.bl.auth.jwt_helper import (
     Token,
     create_access_token,
     create_refresh_token,

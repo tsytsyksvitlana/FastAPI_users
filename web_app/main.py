@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 import uvloop
 from fastapi import FastAPI
 
+# from web_app.api.v1.routers.auth import router as auth_router
+from web_app.api.v1.routers.auth.router import router as auth_router
 from web_app.api.v1.routers.users.router import router as users_router
-from web_app.auth.router import router as auth_router
 from web_app.functions.logger import setup_logger
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

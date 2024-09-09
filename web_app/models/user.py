@@ -7,6 +7,10 @@ from .base import Base
 
 
 class User(Base):
+    """
+    Model representing a user
+    """
+
     first_name: Mapped[str] = mapped_column(String(50), nullable=True)
     last_name: Mapped[str] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(
@@ -35,9 +39,16 @@ class User(Base):
     )
 
     def __repr__(self) -> str:
+        """
+        Provides a string representation of the User object, showing the email.
+        """
         return f"User(email={self.email})"
 
     def as_dict(self):
+        """
+        Converts the User object to a dictionary representation,
+        including only email and password.
+        """
         return {
             "email": self.email,
             "password": self.password,
@@ -45,6 +56,10 @@ class User(Base):
 
     @staticmethod
     def update_timestamp(mapper, connection, target):
+        """
+        Updates the updated_at timestamp before the User object
+        is updated in the database.
+        """
         target.updated_at = datetime.now(timezone.utc)
 
 
