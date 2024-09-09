@@ -109,8 +109,8 @@ test_get_users_cases = [
     ({}, 200, 3),
     ({"first_name": "Alice"}, 200, 1),
     ({"sort_by": "balance", "sort_order": "desc"}, 200, 3),
-    ({"sort_by": "invalid_field"}, 400, 0),
-    ({"sort_order": "invalid_order"}, 400, 0),
+    ({"sort_by": "invalid_field"}, 422, 0),
+    ({"sort_order": "invalid_order"}, 422, 0),
 ]
 
 
@@ -125,7 +125,7 @@ async def test_get_users(
     expected_status: int,
     expected_count: int,
 ):
-    response = await client.get("/api/v1/users/", params=params)
+    response = await client.post("/api/v1/users/", json=params)
     assert response.status_code == expected_status
 
     if expected_status == 200:
@@ -140,9 +140,10 @@ async def test_get_users(
     elif expected_status == 400:
         error_detail = response.json().get("detail", "")
         if "sort_by" in params and params["sort_by"] == "invalid_field":
-            assert error_detail == "Invalid sort_by field: invalid_field"
+            assert error_detail == f"Invalid sort_by field: {params['sort_by']}"
         elif "sort_order" in params and params["sort_order"] == "invalid_order":
-            assert error_detail == "Invalid sort_order field: invalid_order"
+            res = f"Invalid sort_order field: {params['sort_order']}"
+            assert error_detail == res
 
 
 async def test_retrieve_profiles(

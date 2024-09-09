@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, event
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -36,6 +36,13 @@ class User(Base):
     balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     block_status: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
+    )
+
+    __table_args__ = (
+        Index("user_email", "email"),
+        Index("user_last_activity_at", "last_activity_at"),
+        Index("user_block_status", "block_status"),
+        Index("user_balance", "balance"),
     )
 
     def __repr__(self) -> str:
