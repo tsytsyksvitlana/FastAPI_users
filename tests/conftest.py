@@ -62,9 +62,10 @@ async def setup_test_db_and_teardown():
 
 @pytest.fixture(scope="function")
 async def db_session(setup_test_db_and_teardown) -> AsyncSession:
-    async_session = setup_test_db_and_teardown
-    async with async_session() as session:
+    async_session_factory = setup_test_db_and_teardown
+    async with async_session_factory() as session:
         yield session
+        await session.rollback()
 
 
 @pytest.fixture(scope="function")

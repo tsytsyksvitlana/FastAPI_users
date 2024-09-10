@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import asc, desc
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -86,23 +87,31 @@ async def update_profile(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    query = select(User).where(User.email == user.email)
-    result = await session.execute(query)
-    user_profile = result.scalars().first()
+    async with session:
+        query = select(User).where(User.email == user.email)
+        result = await session.execute(query)
+        user_profile = result.scalars().first()
 
-    if not user_profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-    updated_fields = update_data.model_dump(exclude_unset=True)
+        if not user_profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
-    for field, value in updated_fields.items():
-        setattr(user_profile, field, value)
+        updated_fields = update_data.model_dump(exclude_unset=True)
 
-    await session.merge(user_profile)
-    await session.commit()
+        for field, value in updated_fields.items():
+            setattr(user_profile, field, value)
 
-    return user_profile
+        try:
+            await session.commit()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An error occurred while updating the profile",
+            ) from e
+
+        return user_profile
 
 
 @router.get("/{id}/balance/", response_model=int)

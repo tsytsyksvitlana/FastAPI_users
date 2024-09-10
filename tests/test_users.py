@@ -197,7 +197,11 @@ test_update_profile_cases = [
     "update_data, expected_status", test_update_profile_cases
 )
 async def test_update_profile(
-    client, update_data: dict, expected_status: int, test_user_token: str
+    client,
+    db_session,
+    update_data: dict,
+    expected_status: int,
+    test_user_token: str,
 ):
     response = await client.put(
         "/api/v1/users/profile/",
