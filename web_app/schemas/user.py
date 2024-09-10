@@ -44,6 +44,14 @@ class UserCreateS(BaseModel):
             )
         return v
 
+    @field_validator("first_name", "last_name", mode="before")
+    def validate_names(cls, value, field):
+        if value and not re.match(r"^[A-Za-z]+$", value):
+            raise ValueError(
+                f"{field.name} must only contain alphabetic characters."
+            )
+        return value
+
 
 class UserUpdateS(BaseModel):
     """
@@ -53,6 +61,16 @@ class UserUpdateS(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     balance: Optional[int] = Field(None, ge=0)
+
+    @field_validator("first_name", "last_name", mode="before")
+    def validate_names(cls, value, field):
+        if value and value.strip() == "":
+            return None
+        if value and not re.match(r"^[A-Za-z]+$", value):
+            raise ValueError(
+                f"{field.name} must only contain alphabetic characters."
+            )
+        return value
 
 
 class UserResponseS(BaseModel):
