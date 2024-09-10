@@ -99,7 +99,7 @@ async def update_profile(
     for field, value in updated_fields.items():
         setattr(user_profile, field, value)
 
-    session.add(user_profile)
+    await session.merge(user_profile)
     await session.commit()
 
     return user_profile
@@ -141,7 +141,7 @@ async def update_balance(
 
     user_profile.balance = update_data.balance
 
-    session.add(user_profile)
+    await session.merge(user_profile)
     await session.commit()
 
     return user_profile

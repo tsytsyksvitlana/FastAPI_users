@@ -47,8 +47,9 @@ class UserCreateS(BaseModel):
     @field_validator("first_name", "last_name", mode="before")
     def validate_names(cls, value, field):
         if value and not re.match(r"^[A-Za-z]+$", value):
-            raise ValueError(
-                f"{field.name} must only contain alphabetic characters."
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{field.name} must only contain alphabetic characters.",
             )
         return value
 
@@ -67,8 +68,9 @@ class UserUpdateS(BaseModel):
         if value and value.strip() == "":
             return None
         if value and not re.match(r"^[A-Za-z]+$", value):
-            raise ValueError(
-                f"{field.name} must only contain alphabetic characters."
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{field.name} must only contain alphabetic characters.",
             )
         return value
 

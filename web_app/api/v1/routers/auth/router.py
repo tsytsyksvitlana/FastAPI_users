@@ -357,7 +357,7 @@ async def change_password(
             )
 
         user.password = hashed_new_password
-        session.add(user)
+        await session.merge(user)
         await session.commit()
 
     await set_user_to_redis(user.email, user)
