@@ -1,9 +1,21 @@
 from datetime import datetime, timezone
+from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, event
+from sqlalchemy import Boolean, DateTime
+from sqlalchemy import Enum as SQLAEnum
+from sqlalchemy import Index, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
+
+
+class UserRoleEnum(str, Enum):
+    """
+    Enum representing user roles.
+    """
+
+    ADMIN = "admin"
+    USER = "user"
 
 
 class User(Base):
@@ -17,6 +29,9 @@ class User(Base):
         String, unique=True, index=True, nullable=False
     )
     password: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[UserRoleEnum] = mapped_column(
+        SQLAEnum(UserRoleEnum), nullable=False, default=UserRoleEnum.USER
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
