@@ -1,12 +1,12 @@
+import typing as t
 from datetime import datetime, timezone
-from typing import Literal
 
 from sqlalchemy import Boolean, DateTime, Index, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 
-Role = Literal["user", "admin"]
+Role = t.Literal["user", "admin"]
 
 
 class User(Base):
@@ -20,7 +20,9 @@ class User(Base):
         String, unique=True, index=True, nullable=False
     )
     password: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[Role] = mapped_column(index=True)
+    role: Mapped[Role] = mapped_column(
+        String, index=True, nullable=False, default="user"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -67,7 +69,7 @@ class User(Base):
         return {
             "email": self.email,
             "password": self.password,
-            "role": self.role.name,
+            "role": self.role,
         }
 
     @staticmethod

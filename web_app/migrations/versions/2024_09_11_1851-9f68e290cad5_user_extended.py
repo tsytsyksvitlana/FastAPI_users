@@ -1,8 +1,8 @@
 """user extended
 
-Revision ID: 236452eaae0a
+Revision ID: 9f68e290cad5
 Revises: e30f6720c2e4
-Create Date: 2024-09-11 18:33:48.924228
+Create Date: 2024-09-11 18:51:03.092142
 
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "236452eaae0a"
+revision: str = "9f68e290cad5"
 down_revision: Union[str, None] = "e30f6720c2e4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -26,12 +26,7 @@ def upgrade() -> None:
     op.add_column(
         "users", sa.Column("last_name", sa.String(length=50), nullable=True)
     )
-    op.add_column(
-        "users",
-        sa.Column(
-            "role", sa.Enum("user", "admin", native_enum=False), nullable=False
-        ),
-    )
+    op.add_column("users", sa.Column("role", sa.String(), nullable=False))
     op.add_column(
         "users",
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
