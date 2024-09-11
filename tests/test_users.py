@@ -58,6 +58,7 @@ async def populate_users(db_session: AsyncSession):
             "first_name": "Alice",
             "last_name": "Wonderland",
             "email": "alice@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 100,
             "block_status": False,
@@ -69,6 +70,7 @@ async def populate_users(db_session: AsyncSession):
             "first_name": None,
             "last_name": None,
             "email": "bob@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 200,
             "block_status": False,
@@ -80,6 +82,7 @@ async def populate_users(db_session: AsyncSession):
             "first_name": "Charlie",
             "last_name": "Brown",
             "email": "charlie@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 300,
             "block_status": False,
@@ -92,11 +95,12 @@ async def populate_users(db_session: AsyncSession):
     for user_data in default_users:
         await db_session.execute(
             text(
-                "INSERT INTO users (first_name, last_name, email, "
+                "INSERT INTO users (first_name, last_name, email, role, "
                 "password, balance, block_status, "
                 "created_at, updated_at, last_activity_at) "
-                "VALUES (:first_name, :last_name, :email, :password, :balance, "
-                ":block_status, :created_at, :updated_at, :last_activity_at)"
+                "VALUES (:first_name, :last_name, :email, :role, "
+                ":password, :balance, :block_status, "
+                ":created_at, :updated_at, :last_activity_at)"
             ),
             user_data,
         )
