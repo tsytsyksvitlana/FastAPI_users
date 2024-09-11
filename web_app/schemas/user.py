@@ -86,6 +86,8 @@ class UserResponseS(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
     last_activity_at: datetime
+    block: bool
+    block_at: Optional[datetime]
     balance: int
 
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
