@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class AuthJWT(BaseModel):
@@ -20,3 +20,5 @@ PUBLIC_KEY = auth_jwt.public_key_path.read_text()
 
 MAX_ATTEMPTS = 3
 BLOCK_TIME_SECONDS = 300
+
+LOGIN_BONUS = 100

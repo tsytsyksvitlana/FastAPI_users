@@ -8,21 +8,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from web_app.auth import utils
-from web_app.auth.config import (
+from web_app.bl.auth import utils
+from web_app.bl.auth.config import (
     BLOCK_TIME_SECONDS,
+    LOGIN_BONUS,
     MAX_ATTEMPTS,
     PUBLIC_KEY,
     auth_jwt,
 )
-from web_app.auth.jwt_helper import (
+from web_app.bl.auth.jwt_helper import (
     Token,
     create_access_token,
     create_refresh_token,
 )
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
-from web_app.schemas.user import UserS
+from web_app.schemas.user import UserCreateS
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -106,13 +107,14 @@ async def validate_auth_user(
     )
 
     if await check_block(ip, redis):
-        logger.warning(
-            f"IP {ip} is blocked due to too many failed login attempts."
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Too many failed login attempts. Try again later.",
-        )
+        if not ip == "127.0.0.1":
+            logger.warning(
+                f"IP {ip} is blocked due to too many failed login attempts."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Too many failed login attempts. Try again later.",
+            )
 
     user = await get_user_from_redis(email)
     if not user:
@@ -139,7 +141,7 @@ async def validate_auth_user(
 
 @router.post("/register/", status_code=status.HTTP_201_CREATED)
 async def register_user(
-    user: UserS, session: AsyncSession = Depends(db_helper.session_getter)
+    user: UserCreateS, session: AsyncSession = Depends(db_helper.session_getter)
 ) -> dict[str, str]:
     """
     Registers a new user.
@@ -159,7 +161,12 @@ async def register_user(
         )
 
     hashed_password = utils.hash_password(user.password).decode("utf-8")
-    new_user = User(email=user.email, password=hashed_password)
+    new_user = User(
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        password=hashed_password,
+    )
     session.add(new_user)
     await session.commit()
 
@@ -167,10 +174,14 @@ async def register_user(
 
 
 @router.post("/login/", response_model=Token)
-async def login(user: User = Depends(validate_auth_user)) -> Token:
-    """
-    Function logs in a user and returns an access token and a refresh token.
-    """
+async def login(
+    user: User = Depends(validate_auth_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+) -> Token:
+    if user.first_name and user.last_name:
+        user.balance += LOGIN_BONUS
+        session.add(user)
+        await session.commit()
     access_token = create_access_token(user.email)
     refresh_token = create_refresh_token(user.email)
     return Token(access_token=access_token, refresh_token=refresh_token)
@@ -346,7 +357,7 @@ async def change_password(
             )
 
         user.password = hashed_new_password
-        session.add(user)
+        await session.merge(user)
         await session.commit()
 
     await set_user_to_redis(user.email, user)

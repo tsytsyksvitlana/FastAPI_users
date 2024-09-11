@@ -19,7 +19,7 @@ def setup_logger():
                     "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
                     "datefmt": "%Y-%m-%d %H:%M:%S",
                     "format": (
-                        "%(asctime)s.%(msecs)03dZ %(levelname) "
+                        "%(asctime)s.%(msecs)03dZ %(levelname)s "
                         "%(name)s:%(lineno)d %(message)s"
                     ),
                 },
@@ -29,6 +29,9 @@ def setup_logger():
                     "class": "rich.logging.RichHandler",
                     "formatter": "console",
                     "level": "DEBUG",
+                    "rich_tracebacks": True,
+                    "markup": True,
+                    "show_path": True,
                 },
                 "rotating_file": {
                     "class": "logging.handlers.RotatingFileHandler",

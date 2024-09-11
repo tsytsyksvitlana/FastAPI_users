@@ -58,7 +58,7 @@ pre-commit run --all-files
 ```
 ### Migrations
 ```
-docker exec -it fastapi-web-1 /bin/sh
+docker exec -it fastapi-fastapi-1 /bin/sh
 ```
 ```
 cd /code/web_app
@@ -68,6 +68,23 @@ alembic revision --autogenerate -m "message"
 ```
 ```
 exit
+```
+### Testing
+```
+docker exec -it fastapi-fastapi-1 pytest
+```
+### CLI
+#### Create database
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli create
+```
+#### Drop database
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli drop
+```
+#### Populate database with data
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.db.cli populate --file tests/test_data/data.json
 ```
 ### To run ipython
 ```

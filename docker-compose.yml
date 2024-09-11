@@ -24,23 +24,12 @@ services:
     networks:
       - home
 
-  test:
-    build: .
-    command: /bin/sh -c "sleep 2 && pytest --log-cli-level=DEBUG --log-cli-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'"
-    volumes:
-      - .:/code
-    depends_on:
-      - postgres_test
-      - fastapi
-    networks:
-      - home
-
   fastapi:
     build: .
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - .:/code
     command: ipython run.py
     depends_on:
       - postgres
@@ -72,7 +61,7 @@ services:
     build: .
     command: ipython
     volumes:
-      - .:/app
+      - .:/code
     env_file:
       - ./.env
     networks:

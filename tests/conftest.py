@@ -18,8 +18,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="module")
-async def setup_test_db():
+@pytest.fixture(scope="function")
+async def setup_test_db_and_teardown():
     logger.info("Setting up the test database...")
     original_url = settings.url
     settings.url = test_settings.url
@@ -61,13 +61,14 @@ async def setup_test_db():
 
 
 @pytest.fixture(scope="function")
-async def db_session(setup_test_db) -> AsyncSession:
-    async_session = setup_test_db
-    async with async_session() as session:
+async def db_session(setup_test_db_and_teardown) -> AsyncSession:
+    async_session_factory = setup_test_db_and_teardown
+    async with async_session_factory() as session:
         yield session
+        await session.rollback()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 async def client():
     logger.info("Creating HTTP client...")
     transport = ASGITransport(app=app)
@@ -78,6 +79,6 @@ async def client():
     logger.info("HTTP client closed.")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def anyio_backend():
     return "asyncio"
