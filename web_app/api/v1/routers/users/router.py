@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,8 @@ from web_app.schemas.user import (
     UserUpdateS,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 
@@ -27,7 +30,7 @@ async def get_users(
 ):
     order_func = asc if filters.sort_order == "asc" else desc
 
-    query = select(User)
+    query = select(User).where(User.is_deleted.is_(False))
 
     if filters.id is not None:
         query = query.where(User.id == filters.id)
@@ -154,3 +157,33 @@ async def update_balance(
     await session.commit()
 
     return user_profile
+
+
+@router.delete("/{id}/delete/", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_helper.session_getter),
+) -> None:
+    """
+    Marks the user's account as deleted by setting is_deleted to True.
+    """
+    query = select(User).where(User.id == id)
+    result = await session.execute(query)
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already deleted",
+        )
+
+    user.is_deleted = True
+
+    session.add(user)
+    await session.commit()

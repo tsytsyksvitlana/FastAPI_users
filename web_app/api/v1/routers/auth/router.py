@@ -136,6 +136,13 @@ async def validate_auth_user(
         await increment_attempts(ip, redis)
         raise unauthed_exc
 
+    if user.is_deleted:
+        logger.warning(f"Login failed for deleted account: {user.email}.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account has been deleted",
+        )
+
     return user
 
 
@@ -147,7 +154,9 @@ async def register_user(
     Registers a new user.
     Raises HTTP 400 if user already exists.
     """
-    query = select(User).where(User.email == user.email)
+    query = select(User).where(
+        User.email == user.email, User.is_deleted.is_(False)
+    )
     result = await session.execute(query)
     existing_user = result.scalars().first()
 

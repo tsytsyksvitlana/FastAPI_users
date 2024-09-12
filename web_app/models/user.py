@@ -16,9 +16,7 @@ class User(Base):
 
     first_name: Mapped[str] = mapped_column(String(50), nullable=True)
     last_name: Mapped[str] = mapped_column(String(50), nullable=True)
-    email: Mapped[str] = mapped_column(
-        String, unique=True, index=True, nullable=False
-    )
+    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[Role] = mapped_column(
         String, index=True, nullable=False, default="user"
@@ -46,6 +44,9 @@ class User(Base):
     block_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
     )
 
     __table_args__ = (
