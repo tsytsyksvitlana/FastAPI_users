@@ -65,6 +65,7 @@ async def populate_users(db_session: AsyncSession):
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
         },
         {
             "first_name": None,
@@ -77,6 +78,7 @@ async def populate_users(db_session: AsyncSession):
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
         },
         {
             "first_name": "Charlie",
@@ -89,6 +91,7 @@ async def populate_users(db_session: AsyncSession):
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
         },
     ]
 
@@ -97,10 +100,10 @@ async def populate_users(db_session: AsyncSession):
             text(
                 "INSERT INTO users (first_name, last_name, email, role, "
                 "password, balance, block_status, "
-                "created_at, updated_at, last_activity_at) "
+                "created_at, updated_at, last_activity_at, is_deleted) "
                 "VALUES (:first_name, :last_name, :email, :role, "
                 ":password, :balance, :block_status, "
-                ":created_at, :updated_at, :last_activity_at)"
+                ":created_at, :updated_at, :last_activity_at, :is_deleted)"
             ),
             user_data,
         )
@@ -252,3 +255,17 @@ async def test_update_balance(
         assert response.json().get("detail") == "User not found"
     elif expected_status == 422:
         assert response.json().get("detail")
+
+
+test_delete_account_cases = [(1, 204), (999, 404), (2, 404)]
+
+
+@pytest.mark.parametrize("user_id, expected_status", test_delete_account_cases)
+async def test_delete_account(
+    client, user_id: int, expected_status: int, test_user_token: str
+):
+    response = await client.delete(
+        f"/api/v1/users/{user_id}/delete/",
+        headers={"Authorization": f"Bearer {test_user_token}"},
+    )
+    assert response.status_code == expected_status
