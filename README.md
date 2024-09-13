@@ -84,7 +84,11 @@ docker exec -it fastapi-fastapi-1 python -m web_app.db.cli drop
 ```
 #### Populate database with data
 ```
-docker exec -it fastapi-fastapi-1 python -m web_app.db.cli populate --file tests/test_data/data.json
+docker exec -it fastapi-fastapi-1 python -m web_app.cli populate --file tests/test_data/data.json
+```
+### Create user with admin role
+```
+docker exec -it fastapi-fastapi-1 python -m web_app.cli create-admin
 ```
 ### To run ipython
 ```

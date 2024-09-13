@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+from getpass import getpass
 
 from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -99,13 +100,36 @@ def populate_db(file_path: str) -> None:
     logger.info("Database populated with sample data.")
 
 
+def create_admin_user(
+    first_name: str, last_name: str, email: str, password: str
+):
+    """
+    Create an admin user.
+    """
+
+    async def async_create_admin():
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                user = User(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    password=utils.hash_password(password).decode("utf-8"),
+                )
+                session.add(user)
+                await session.commit()
+
+    asyncio.run(async_create_admin())
+    logger.info(f"Admin user with {email} successfully created.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Manage the database.")
     parser.add_argument(
         "command",
         type=str,
-        choices=["create", "drop", "migrate", "populate"],
-        help="Command to run: create, drop, migrate, or populate",
+        choices=["create", "drop", "migrate", "populate", "create-admin"],
+        help="Command to run: create, drop, migrate, populate, or create-admin",
     )
     parser.add_argument(
         "--file",
@@ -129,6 +153,18 @@ def main() -> None:
             )
         else:
             populate_db(args.file)
+    elif args.command == "create-admin":
+        first_name = input("Enter admin's first name: ")
+        last_name = input("Enter admin's last name: ")
+        email = input("Enter admin's email: ")
+        password = getpass("Enter admin's password: ")
+        confirm_password = getpass("Confirm admin's password: ")
+
+        if password != confirm_password:
+            logger.error("Passwords do not match!")
+            return
+
+        create_admin_user(first_name, last_name, email, password)
     else:
         logger.error(f"Unknown command: {args.command}")
 
