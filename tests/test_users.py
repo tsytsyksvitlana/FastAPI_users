@@ -62,7 +62,7 @@ async def populate_users(db_session: AsyncSession):
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
-            "is_deleted": False,
+            "is_deleted": True,
         },
     ]
 
@@ -84,9 +84,9 @@ async def populate_users(db_session: AsyncSession):
 
 
 test_get_users_cases = [
-    ({}, 200, 4),
+    ({}, 200, 3),
     ({"first_name": "Alice"}, 200, 1),
-    ({"sort_by": "balance", "sort_order": "desc"}, 200, 4),
+    ({"sort_by": "balance", "sort_order": "desc"}, 200, 3),
     ({"sort_by": "invalid_field"}, 422, 0),
     ({"sort_order": "invalid_order"}, 422, 0),
 ]
@@ -273,6 +273,7 @@ test_get_deleted_users_cases = [
 )
 async def test_get_deleted_users(
     client,
+    populate_users,
     role: str,
     expected_status: int,
     expected_user_count: int,
@@ -280,24 +281,6 @@ async def test_get_deleted_users(
     test_admin_token: str,
     db_session: AsyncSession,
 ):
-    await db_session.execute(
-        text(
-            "INSERT INTO users (first_name, last_name, email, role, "
-            "password, balance, block_status, "
-            "created_at, updated_at, last_activity_at, is_deleted) "
-            "VALUES ('Deleted', 'User', 'deleteduser@example.com', 'user', "
-            ":password, 100, False, "
-            ":created_at, :updated_at, :last_activity_at, True)"
-        ),
-        {
-            "password": utils.hash_password("user123/").decode("utf-8"),
-            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
-            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
-            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
-        },
-    )
-    await db_session.commit()
-
     token = test_admin_token if role == "admin" else test_user_token
 
     response = await client.get(
@@ -310,3 +293,41 @@ async def test_get_deleted_users(
         json_response = response.json()
         assert isinstance(json_response, list)
         assert len(json_response) == expected_user_count
+
+
+test_block_unblock_cases = [
+    (1, True, 200),
+    (2, True, 404),
+    (3, True, 404),
+    (3, False, 404),
+]
+
+
+@pytest.mark.parametrize(
+    "user_id, block_status, expected_status", test_block_unblock_cases
+)
+async def test_block_unblock_user(
+    client,
+    user_id: int,
+    block_status: bool,
+    expected_status: int,
+    test_admin_token: str,
+):
+    token = test_admin_token
+
+    if not block_status:
+        response = await client.patch(
+            f"/api/v1/users/{user_id}/block/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    else:
+        response = await client.patch(
+            f"/api/v1/users/{user_id}/unblock/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        user_response = response.json()
+        assert user_response["block_status"] != block_status

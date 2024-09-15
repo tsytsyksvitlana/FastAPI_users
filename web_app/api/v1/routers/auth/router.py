@@ -193,7 +193,7 @@ async def login(
     user: User = Depends(validate_auth_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> Token:
-    if user.first_name and user.last_name:
+    if user.first_name and user.last_name and user.role != "admin":
         user.balance += LOGIN_BONUS
         session.add(user)
         await session.commit()

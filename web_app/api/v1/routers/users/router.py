@@ -214,3 +214,59 @@ async def get_deleted_users(
     users = result.scalars().all()
 
     return users
+
+
+@router.patch(
+    "/{user_id}/block/",
+    response_model=UserResponseS,
+    status_code=status.HTTP_200_OK,
+)
+async def block_user(
+    user_id: int,
+    user: User = Depends(admin_permission),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    """
+    Blocks a user by ID. Requires admin role.
+    """
+    query = select(User).where(User.id == user_id)
+    result = await session.execute(query)
+    user_to_block = result.scalar_one_or_none()
+
+    if not user_to_block or user_to_block.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_to_block.block_status = True
+    await session.commit()
+
+    return user_to_block
+
+
+@router.patch(
+    "/{user_id}/unblock/",
+    response_model=UserResponseS,
+    status_code=status.HTTP_200_OK,
+)
+async def unblock_user(
+    user_id: int,
+    user: User = Depends(admin_permission),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    """
+    Unblocks a user by ID. Requires admin role.
+    """
+    query = select(User).where(User.id == user_id)
+    result = await session.execute(query)
+    user_to_unblock = result.scalar_one_or_none()
+
+    if not user_to_unblock or user_to_unblock.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_to_unblock.block_status = False
+    await session.commit()
+
+    return user_to_unblock
