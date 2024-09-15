@@ -260,3 +260,53 @@ async def test_delete_account(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == expected_status
+
+
+test_get_deleted_users_cases = [
+    ("admin", 200, 1),
+    ("user", 404, None),
+]
+
+
+@pytest.mark.parametrize(
+    "role, expected_status, expected_user_count", test_get_deleted_users_cases
+)
+async def test_get_deleted_users(
+    client,
+    role: str,
+    expected_status: int,
+    expected_user_count: int,
+    test_user_token: str,
+    test_admin_token: str,
+    db_session: AsyncSession,
+):
+    await db_session.execute(
+        text(
+            "INSERT INTO users (first_name, last_name, email, role, "
+            "password, balance, block_status, "
+            "created_at, updated_at, last_activity_at, is_deleted) "
+            "VALUES ('Deleted', 'User', 'deleteduser@example.com', 'user', "
+            ":password, 100, False, "
+            ":created_at, :updated_at, :last_activity_at, True)"
+        ),
+        {
+            "password": utils.hash_password("user123/").decode("utf-8"),
+            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
+            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
+            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+        },
+    )
+    await db_session.commit()
+
+    token = test_admin_token if role == "admin" else test_user_token
+
+    response = await client.get(
+        "/api/v1/users/deleted/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        json_response = response.json()
+        assert isinstance(json_response, list)
+        assert len(json_response) == expected_user_count

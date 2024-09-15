@@ -195,3 +195,22 @@ async def delete_account(
 
     session.add(user)
     await session.commit()
+
+
+@router.get(
+    "/deleted/",
+    response_model=List[UserResponseS],
+    status_code=status.HTTP_200_OK,
+)
+async def get_deleted_users(
+    user: User = Depends(admin_permission),
+    session: AsyncSession = Depends(db_helper.session_getter),
+):
+    """
+    Gets deleted users. Requires admin role.
+    """
+    query = select(User).where(User.is_deleted.is_(True))
+    result = await session.execute(query)
+    users = result.scalars().all()
+
+    return users
