@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.api.v1.routers.auth.router import get_current_user
+from web_app.bl.auth.permissions import user_permission
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import (
@@ -162,7 +163,7 @@ async def update_balance(
 @router.delete("/{id}/delete/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(
     id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(user_permission),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> None:
     """

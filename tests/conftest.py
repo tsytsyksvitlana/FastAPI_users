@@ -3,6 +3,7 @@ import logging
 import pytest
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -77,6 +78,35 @@ async def client():
     ) as ac:
         yield ac
     logger.info("HTTP client closed.")
+
+
+@pytest.fixture
+async def test_user_token(client, db_session, mock_redis):
+    existing_user = await db_session.execute(
+        text("SELECT id FROM users WHERE email = 'testuserrouter1@example.com'")
+    )
+    user_id = existing_user.scalar()
+
+    if not user_id:
+        await client.post(
+            "/api/v1/auth/register/",
+            json={
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "testuserrouter1@example.com",
+                "password": "dshbhjHH03/",
+            },
+        )
+
+    response = await client.post(
+        "/api/v1/auth/login/",
+        data={
+            "email": "testuserrouter1@example.com",
+            "password": "dshbhjHH03/",
+        },
+    )
+    assert response.status_code == 200
+    return response.json().get("access_token")
 
 
 @pytest.fixture(scope="function")
