@@ -142,6 +142,12 @@ async def validate_auth_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This account has been deleted",
         )
+    if user.block_status:
+        logger.warning(f"Login failed for blocked account: {user.email}.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is blocked",
+        )
 
     return user
 

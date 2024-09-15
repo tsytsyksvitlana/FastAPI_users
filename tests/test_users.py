@@ -58,7 +58,7 @@ async def populate_users(db_session: AsyncSession):
             "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 300,
-            "block_status": False,
+            "block_status": True,
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
@@ -84,9 +84,9 @@ async def populate_users(db_session: AsyncSession):
 
 
 test_get_users_cases = [
-    ({}, 200, 3),
+    ({}, 200, 4),
     ({"first_name": "Alice"}, 200, 1),
-    ({"sort_by": "balance", "sort_order": "desc"}, 200, 3),
+    ({"sort_by": "balance", "sort_order": "desc"}, 200, 4),
     ({"sort_by": "invalid_field"}, 422, 0),
     ({"sort_order": "invalid_order"}, 422, 0),
 ]
@@ -102,8 +102,13 @@ async def test_get_users(
     params: dict,
     expected_status: int,
     expected_count: int,
+    test_admin_token: str,
 ):
-    response = await client.post("/api/v1/users/", json=params)
+    response = await client.post(
+        "/api/v1/users/",
+        json=params,
+        headers={"Authorization": f"Bearer {test_admin_token}"},
+    )
     assert response.status_code == expected_status
 
     if expected_status == 200:
@@ -228,15 +233,30 @@ async def test_update_balance(
         assert response.json().get("detail")
 
 
-test_delete_account_cases = [(1, 204), (999, 404), (2, 404)]
+test_delete_account_cases = [
+    (1, 204, "user"),
+    (999, 404, "user"),
+    (2, 404, "user"),
+    (1, 404, "admin"),
+    (999, 404, "admin"),
+]
 
 
-@pytest.mark.parametrize("user_id, expected_status", test_delete_account_cases)
+@pytest.mark.parametrize(
+    "user_id, expected_status, role", test_delete_account_cases
+)
 async def test_delete_account(
-    client, user_id: int, expected_status: int, test_user_token: str
+    client,
+    user_id: int,
+    expected_status: int,
+    role: str,
+    test_user_token: str,
+    test_admin_token: str,
 ):
+    token = test_admin_token if role == "admin" else test_user_token
+
     response = await client.delete(
         f"/api/v1/users/{user_id}/delete/",
-        headers={"Authorization": f"Bearer {test_user_token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == expected_status

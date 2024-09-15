@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 import pytest
 from alembic.config import Config
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from web_app.bl.auth import utils
 from web_app.db.config import settings, test_settings
 from web_app.db.db_helper import db_helper
 from web_app.main import app
@@ -103,6 +105,56 @@ async def test_user_token(client, db_session, mock_redis):
         data={
             "email": "testuserrouter1@example.com",
             "password": "dshbhjHH03/",
+        },
+    )
+    assert response.status_code == 200
+    return response.json().get("access_token")
+
+
+@pytest.fixture
+async def test_admin_data_users(db_session: AsyncSession):
+    default_users = [
+        {
+            "first_name": "AdminName",
+            "last_name": "AdminLastName",
+            "email": "admin@example.com",
+            "role": "admin",
+            "password": utils.hash_password("adminJHHJHS334/").decode("utf-8"),
+            "balance": 0,
+            "block_status": False,
+            "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
+            "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
+            "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
+        }
+    ]
+
+    for user_data in default_users:
+        await db_session.execute(
+            text(
+                "INSERT INTO users (first_name, last_name, email, role, "
+                "password, balance, block_status, "
+                "created_at, updated_at, last_activity_at, is_deleted) "
+                "VALUES (:first_name, :last_name, :email, :role, "
+                ":password, :balance, :block_status, "
+                ":created_at, :updated_at, :last_activity_at, :is_deleted)"
+            ),
+            user_data,
+        )
+
+    await db_session.commit()
+    yield
+
+
+@pytest.fixture
+async def test_admin_token(
+    client, db_session, test_admin_data_users, mock_redis
+):
+    response = await client.post(
+        "/api/v1/auth/login/",
+        data={
+            "email": "admin@example.com",
+            "password": "adminJHHJHS334/",
         },
     )
     assert response.status_code == 200

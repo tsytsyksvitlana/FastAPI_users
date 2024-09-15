@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.api.v1.routers.auth.router import get_current_user
-from web_app.bl.auth.permissions import user_permission
+from web_app.bl.auth.permissions import admin_permission, user_permission
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import (
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 async def get_users(
     filters: UserFilterS,
     session: AsyncSession = Depends(db_helper.session_getter),
+    user: User = Depends(admin_permission),
 ):
     order_func = asc if filters.sort_order == "asc" else desc
 
@@ -167,8 +168,14 @@ async def delete_account(
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> None:
     """
-    Marks the user's account as deleted by setting is_deleted to True.
+    Marks the user's account as deleted.
     """
+    if user.id != id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     query = select(User).where(User.id == id)
     result = await session.execute(query)
     user = result.scalars().first()
