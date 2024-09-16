@@ -1,6 +1,7 @@
 import typing as t
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import Boolean, DateTime, Index, Integer, String, event
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -81,5 +82,25 @@ class User(Base):
         """
         target.updated_at = datetime.now(timezone.utc)
 
+    @staticmethod
+    def check_admin_balance(user):
+        """
+        Ensure admins cannot have an active balance.
+        """
+        if user.role == "admin" and user.balance > 0:
+            raise HTTPException(
+                status_code=400, detail="Admins cannot have an active balance"
+            )
 
+    @staticmethod
+    def before_insert_or_update(mapper, connection, target):
+        """
+        Validates before inserting or updating a User object.
+        Ensures that an admin cannot have an active balance.
+        """
+        User.check_admin_balance(target)
+
+
+event.listen(User, "before_update", User.before_insert_or_update)
+event.listen(User, "before_insert", User.before_insert_or_update)
 event.listen(User, "before_update", User.update_timestamp)
