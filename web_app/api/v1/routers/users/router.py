@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import asc, desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -203,13 +203,20 @@ async def delete_account(
     status_code=status.HTTP_200_OK,
 )
 async def get_deleted_users(
+    limit: int = Query(default=10, ge=1),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(admin_permission),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
     """
     Gets deleted users. Requires admin role.
     """
-    query = select(User).where(User.is_deleted.is_(True))
+    query = (
+        select(User)
+        .where(User.is_deleted.is_(True))
+        .limit(limit)
+        .offset(offset)
+    )
     result = await session.execute(query)
     users = result.scalars().all()
 
