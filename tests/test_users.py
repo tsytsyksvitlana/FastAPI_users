@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from web_app.bl.auth import utils
+from web_app.services.auth import utils
 
 pytestmark = pytest.mark.anyio
 
@@ -235,10 +235,10 @@ async def test_update_balance(
 
 test_delete_account_cases = [
     (1, 204, "user"),
-    (999, 404, "user"),
-    (2, 404, "user"),
-    (1, 404, "admin"),
-    (999, 404, "admin"),
+    (999, 403, "user"),
+    (2, 403, "user"),
+    (1, 403, "admin"),
+    (999, 403, "admin"),
 ]
 
 
@@ -264,7 +264,7 @@ async def test_delete_account(
 
 test_get_deleted_users_cases = [
     ("admin", 200, 1),
-    ("user", 404, None),
+    ("user", 403, None),
 ]
 
 

@@ -8,22 +8,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from web_app.bl.auth import utils
-from web_app.bl.auth.config import (
+from web_app.db.db_helper import db_helper
+from web_app.models.user import User
+from web_app.schemas.user import UserCreateS
+from web_app.services.auth import utils
+from web_app.services.auth.config import (
     BLOCK_TIME_SECONDS,
     LOGIN_BONUS,
     MAX_ATTEMPTS,
     PUBLIC_KEY,
     auth_jwt,
 )
-from web_app.bl.auth.jwt_helper import (
+from web_app.services.auth.jwt_helper import (
     Token,
     create_access_token,
     create_refresh_token,
 )
-from web_app.db.db_helper import db_helper
-from web_app.models.user import User
-from web_app.schemas.user import UserCreateS
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 

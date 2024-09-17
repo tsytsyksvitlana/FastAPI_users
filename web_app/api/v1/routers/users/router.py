@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from web_app.api.v1.routers.auth.router import get_current_user
-from web_app.bl.auth.permissions import admin_permission, user_permission
 from web_app.db.db_helper import db_helper
 from web_app.models.user import User
 from web_app.schemas.user import (
@@ -18,6 +17,7 @@ from web_app.schemas.user import (
     UserResponseS,
     UserUpdateS,
 )
+from web_app.services.auth.permissions import admin_permission, user_permission
 
 logger = logging.getLogger(__name__)
 
@@ -172,28 +172,28 @@ async def delete_account(
     """
     if user.id != id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
         )
 
     query = select(User).where(User.id == id)
     result = await session.execute(query)
-    user = result.scalars().first()
+    user_obj = result.scalars().first()
 
-    if not user:
+    if not user_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    if user.is_deleted:
+    if user_obj.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User account is already deleted",
         )
 
-    user.is_deleted = True
+    user_obj.is_deleted = True
 
-    session.add(user)
+    session.add(user_obj)
     await session.commit()
 
 
@@ -216,6 +216,27 @@ async def get_deleted_users(
     return users
 
 
+async def change_block_status(
+    user_id: int, block_status: bool, session: AsyncSession
+):
+    """
+    Helper function to change block status for a user.
+    """
+    query = select(User).where(User.id == user_id)
+    result = await session.execute(query)
+    user_to_update = result.scalar_one_or_none()
+
+    if not user_to_update or user_to_update.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user_to_update.block_status = block_status
+    await session.commit()
+
+    return user_to_update
+
+
 @router.patch(
     "/{user_id}/block/",
     response_model=UserResponseS,
@@ -229,19 +250,7 @@ async def block_user(
     """
     Blocks a user by ID. Requires admin role.
     """
-    query = select(User).where(User.id == user_id)
-    result = await session.execute(query)
-    user_to_block = result.scalar_one_or_none()
-
-    if not user_to_block or user_to_block.is_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    user_to_block.block_status = True
-    await session.commit()
-
-    return user_to_block
+    return await change_block_status(user_id, True, session)
 
 
 @router.patch(
@@ -257,16 +266,4 @@ async def unblock_user(
     """
     Unblocks a user by ID. Requires admin role.
     """
-    query = select(User).where(User.id == user_id)
-    result = await session.execute(query)
-    user_to_unblock = result.scalar_one_or_none()
-
-    if not user_to_unblock or user_to_unblock.is_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    user_to_unblock.block_status = False
-    await session.commit()
-
-    return user_to_unblock
+    return await change_block_status(user_id, False, session)

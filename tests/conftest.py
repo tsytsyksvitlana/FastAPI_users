@@ -11,11 +11,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from web_app.bl.auth import utils
 from web_app.db.config import settings, test_settings
 from web_app.db.db_helper import db_helper
 from web_app.main import app
 from web_app.models.base import Base
+from web_app.services.auth import utils
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
