@@ -8,22 +8,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from web_app.bl.auth import utils
-from web_app.bl.auth.config import (
+from web_app.db.db_helper import db_helper
+from web_app.models.user import User
+from web_app.schemas.user import UserCreateS
+from web_app.services.auth import utils
+from web_app.services.auth.config import (
     BLOCK_TIME_SECONDS,
     LOGIN_BONUS,
     MAX_ATTEMPTS,
     PUBLIC_KEY,
     auth_jwt,
 )
-from web_app.bl.auth.jwt_helper import (
+from web_app.services.auth.jwt_helper import (
     Token,
     create_access_token,
     create_refresh_token,
 )
-from web_app.db.db_helper import db_helper
-from web_app.models.user import User
-from web_app.schemas.user import UserCreateS
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -136,6 +136,19 @@ async def validate_auth_user(
         await increment_attempts(ip, redis)
         raise unauthed_exc
 
+    if user.is_deleted:
+        logger.warning(f"Login failed for deleted account: {user.email}.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account has been deleted",
+        )
+    if user.block_status:
+        logger.warning(f"Login failed for blocked account: {user.email}.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is blocked",
+        )
+
     return user
 
 
@@ -147,7 +160,9 @@ async def register_user(
     Registers a new user.
     Raises HTTP 400 if user already exists.
     """
-    query = select(User).where(User.email == user.email)
+    query = select(User).where(
+        User.email == user.email, User.is_deleted.is_(False)
+    )
     result = await session.execute(query)
     existing_user = result.scalars().first()
 
@@ -178,7 +193,7 @@ async def login(
     user: User = Depends(validate_auth_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> Token:
-    if user.first_name and user.last_name:
+    if user.first_name and user.last_name and user.role != "admin":
         user.balance += LOGIN_BONUS
         session.add(user)
         await session.commit()

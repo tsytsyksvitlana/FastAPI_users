@@ -16,7 +16,7 @@ repos:
           language_version: python3.12
           entry: black --config ./.black .
     -   repo: https://github.com/PyCQA/flake8
-        rev: 7.1.0
+        rev: 7.1.1
         hooks:
         - id: flake8
           entry: flake8 --config .flake8 .

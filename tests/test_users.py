@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from web_app.bl.auth import utils
+from web_app.services.auth import utils
 
 pytestmark = pytest.mark.anyio
 
@@ -23,80 +23,58 @@ async def mock_redis():
 
 
 @pytest.fixture
-async def test_user_token(client, db_session, mock_redis):
-    existing_user = await db_session.execute(
-        text("SELECT id FROM users WHERE email = 'testuserrouter1@example.com'")
-    )
-    user_id = existing_user.scalar()
-
-    if not user_id:
-        await client.post(
-            "/api/v1/auth/register/",
-            json={
-                "first_name": "John",
-                "last_name": "Doe",
-                "email": "testuserrouter1@example.com",
-                "password": "dshbhjHH03/",
-            },
-        )
-
-    response = await client.post(
-        "/api/v1/auth/login/",
-        data={
-            "email": "testuserrouter1@example.com",
-            "password": "dshbhjHH03/",
-        },
-    )
-    assert response.status_code == 200
-    return response.json().get("access_token")
-
-
-@pytest.fixture
 async def populate_users(db_session: AsyncSession):
     default_users = [
         {
             "first_name": "Alice",
             "last_name": "Wonderland",
             "email": "alice@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 100,
             "block_status": False,
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
         },
         {
             "first_name": None,
             "last_name": None,
             "email": "bob@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 200,
             "block_status": False,
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": False,
         },
         {
             "first_name": "Charlie",
             "last_name": "Brown",
             "email": "charlie@example.com",
+            "role": "user",
             "password": utils.hash_password("dshbhjHH03/").decode("utf-8"),
             "balance": 300,
-            "block_status": False,
+            "block_status": True,
             "created_at": datetime(2024, 9, 6, 10, 53, 18, 967768),
             "updated_at": datetime(2024, 9, 6, 10, 53, 18, 967841),
             "last_activity_at": datetime(2024, 9, 6, 10, 53, 18, 967864),
+            "is_deleted": True,
         },
     ]
 
     for user_data in default_users:
         await db_session.execute(
             text(
-                "INSERT INTO users (first_name, last_name, email, "
+                "INSERT INTO users (first_name, last_name, email, role, "
                 "password, balance, block_status, "
-                "created_at, updated_at, last_activity_at) "
-                "VALUES (:first_name, :last_name, :email, :password, :balance, "
-                ":block_status, :created_at, :updated_at, :last_activity_at)"
+                "created_at, updated_at, last_activity_at, is_deleted) "
+                "VALUES (:first_name, :last_name, :email, :role, "
+                ":password, :balance, :block_status, "
+                ":created_at, :updated_at, :last_activity_at, :is_deleted)"
             ),
             user_data,
         )
@@ -124,8 +102,13 @@ async def test_get_users(
     params: dict,
     expected_status: int,
     expected_count: int,
+    test_admin_token: str,
 ):
-    response = await client.post("/api/v1/users/", json=params)
+    response = await client.post(
+        "/api/v1/users/",
+        json=params,
+        headers={"Authorization": f"Bearer {test_admin_token}"},
+    )
     assert response.status_code == expected_status
 
     if expected_status == 200:
@@ -248,3 +231,103 @@ async def test_update_balance(
         assert response.json().get("detail") == "User not found"
     elif expected_status == 422:
         assert response.json().get("detail")
+
+
+test_delete_account_cases = [
+    (1, 204, "user"),
+    (999, 403, "user"),
+    (2, 403, "user"),
+    (1, 403, "admin"),
+    (999, 403, "admin"),
+]
+
+
+@pytest.mark.parametrize(
+    "user_id, expected_status, role", test_delete_account_cases
+)
+async def test_delete_account(
+    client,
+    user_id: int,
+    expected_status: int,
+    role: str,
+    test_user_token: str,
+    test_admin_token: str,
+):
+    token = test_admin_token if role == "admin" else test_user_token
+
+    response = await client.delete(
+        f"/api/v1/users/{user_id}/delete/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected_status
+
+
+test_get_deleted_users_cases = [
+    ("admin", 200, 1),
+    ("user", 403, None),
+]
+
+
+@pytest.mark.parametrize(
+    "role, expected_status, expected_user_count", test_get_deleted_users_cases
+)
+async def test_get_deleted_users(
+    client,
+    populate_users,
+    role: str,
+    expected_status: int,
+    expected_user_count: int,
+    test_user_token: str,
+    test_admin_token: str,
+    db_session: AsyncSession,
+):
+    token = test_admin_token if role == "admin" else test_user_token
+
+    response = await client.get(
+        "/api/v1/users/deleted/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        json_response = response.json()
+        assert isinstance(json_response, list)
+        assert len(json_response) == expected_user_count
+
+
+test_block_unblock_cases = [
+    (1, True, 200),
+    (2, True, 404),
+    (3, True, 404),
+    (3, False, 404),
+]
+
+
+@pytest.mark.parametrize(
+    "user_id, block_status, expected_status", test_block_unblock_cases
+)
+async def test_block_unblock_user(
+    client,
+    user_id: int,
+    block_status: bool,
+    expected_status: int,
+    test_admin_token: str,
+):
+    token = test_admin_token
+
+    if not block_status:
+        response = await client.patch(
+            f"/api/v1/users/{user_id}/block/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    else:
+        response = await client.patch(
+            f"/api/v1/users/{user_id}/unblock/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        user_response = response.json()
+        assert user_response["block_status"] != block_status

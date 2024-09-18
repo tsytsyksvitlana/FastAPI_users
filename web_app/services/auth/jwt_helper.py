@@ -2,8 +2,8 @@ from datetime import timedelta
 
 from pydantic import BaseModel
 
-from web_app.bl.auth import utils
-from web_app.bl.auth.config import auth_jwt
+from web_app.services.auth import utils
+from web_app.services.auth.config import auth_jwt
 
 
 class Token(BaseModel):
