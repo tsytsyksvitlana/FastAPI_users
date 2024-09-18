@@ -19,6 +19,7 @@ from web_app.services.auth.config import (
     PUBLIC_KEY,
     auth_jwt,
 )
+from web_app.services.auth.config import redis_client as redis
 from web_app.services.auth.jwt_helper import (
     Token,
     create_access_token,
@@ -28,10 +29,6 @@ from web_app.services.auth.jwt_helper import (
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 http_bearer = HTTPBearer(auto_error=True)
-
-redis = Redis.from_url(
-    "redis://redis:6379/0", encoding="utf-8", decode_responses=True
-)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +46,7 @@ async def get_user_from_redis(email: str) -> User | None:
     if user_data:
         user_dict = json.loads(user_data)
         return User(**user_dict)
+    return None
 
 
 async def set_user_to_redis(email: str, user: User) -> None:
@@ -59,7 +57,7 @@ async def set_user_to_redis(email: str, user: User) -> None:
     await redis.set(email, json.dumps(user_dict), ex=300)
 
 
-async def check_block(ip: str, redis: Redis) -> bool:
+async def check_block(ip: str) -> bool:
     """
     Returns is ip blocked or not.
     """
@@ -68,11 +66,10 @@ async def check_block(ip: str, redis: Redis) -> bool:
     return blocked is not None
 
 
-async def increment_attempts(ip: str, redis: Redis):
+async def increment_attempts(ip: str) -> None:
     """
-    Increments number of attempts.
-    If amount of retries exceeds MAX_ATTEMPTS, ip blocks
-    for BLOCK_TIME_SECONDS and counter is set to 0.
+    Increments the number of login attempts.
+    Blocks IP if attempts exceed MAX_ATTEMPTS.
     """
     attempts_key = f"attempts:{ip}"
     block_key = f"block:{ip}"
@@ -88,10 +85,9 @@ async def increment_attempts(ip: str, redis: Redis):
 
 async def get_client_ip(request: Request) -> str:
     """
-    Gets the client's IP address from the request headers.
+    Retrieves client IP address from the request.
     """
-    ip = request.client.host
-    return ip
+    return request.client.host
 
 
 async def validate_auth_user(
@@ -106,7 +102,7 @@ async def validate_auth_user(
         detail="Invalid username or password",
     )
 
-    if await check_block(ip, redis):
+    if await check_block(ip):
         if not ip == "127.0.0.1":
             logger.warning(
                 f"IP {ip} is blocked due to too many failed login attempts."
@@ -125,7 +121,7 @@ async def validate_auth_user(
             await set_user_to_redis(email, user)
         else:
             logger.warning(f"Login failed for email: {email}. User not found.")
-            await increment_attempts(ip, redis)
+            await increment_attempts(ip)
             raise unauthed_exc
 
     if not utils.validate_password(
@@ -133,7 +129,7 @@ async def validate_auth_user(
         hashed_password=user.password,
     ):
         logger.warning(f"Login failed for email: {email}. Incorrect password.")
-        await increment_attempts(ip, redis)
+        await increment_attempts(ip)
         raise unauthed_exc
 
     if user.is_deleted:
@@ -193,10 +189,14 @@ async def login(
     user: User = Depends(validate_auth_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> Token:
+    """
+    Logs in a user and returns access and refresh tokens.
+    """
     if user.first_name and user.last_name and user.role != "admin":
         user.balance += LOGIN_BONUS
         session.add(user)
         await session.commit()
+
     access_token = create_access_token(user.email)
     refresh_token = create_refresh_token(user.email)
     return Token(access_token=access_token, refresh_token=refresh_token)
@@ -204,7 +204,7 @@ async def login(
 
 async def add_token_to_blacklist(token: str) -> None:
     """
-    Saves token to blacklist and adds it to redis.
+    Adds token to the blacklist in Redis.
     """
     await redis.set(
         token, "blacklisted", ex=auth_jwt.access_token_expire_minutes * 60
@@ -212,16 +212,18 @@ async def add_token_to_blacklist(token: str) -> None:
 
 
 async def is_token_blacklisted(token: str) -> bool:
+    """
+    Checks if a token is blacklisted.
+    """
     return await redis.exists(token)
 
 
 @router.post("/logout/", status_code=status.HTTP_200_OK)
 async def logout(
     token: str = Depends(http_bearer),
-    session: AsyncSession = Depends(db_helper.session_getter),
 ) -> dict[str, str]:
     """
-    Logs out a user.
+    Logs out a user by blacklisting the token.
     """
     token = token.credentials
     if await is_token_blacklisted(token):
