@@ -37,6 +37,30 @@ def get_redis_client() -> Redis:
     return redis
 
 
+async def cache_token(token: str, payload: dict) -> None:
+    """
+    Caches token and its decoded version in Redis.
+    """
+    expires_in = auth_jwt.access_token_expire_minutes * 60
+    await redis.set(token, payload, expires_in)
+
+
+async def get_cached_token(token: str) -> dict | None:
+    """
+    Gets encoded token.
+    """
+    token_data = await redis.get(token)
+    if token_data:
+        return token_data
+
+
+async def remove_cached_token(token: str) -> None:
+    """
+    Deletes token from cache.
+    """
+    await redis.delete(token)
+
+
 async def get_user_from_redis(email: str) -> User | None:
     """
     Gets user from Redis based on email.
@@ -282,7 +306,6 @@ async def auth_refresh_jwt(token: str = Depends(http_bearer)) -> Token:
 async def get_current_user(
     token: str = Depends(http_bearer),
     session: AsyncSession = Depends(db_helper.session_getter),
-    redis: Redis = Depends(get_redis_client),
 ) -> User:
     """
     Gets the current user based on the JWT token.
@@ -298,6 +321,20 @@ async def get_current_user(
             detail="Token is blacklisted",
         )
 
+    cached_payload = await get_cached_token(token)
+    if cached_payload:
+        user_email = cached_payload.get("email")
+        if not user_email:
+            logger.warning("Token validation failed. Invalid token payload.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
+
+        cached_user = await get_user_from_redis(user_email)
+        if cached_user:
+            return cached_user
+
     algorithm = auth_jwt.algorithm
     payload = utils.decode_jwt(token, PUBLIC_KEY, algorithm)
 
@@ -308,10 +345,6 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
-
-    cached_user = await get_user_from_redis(user_email)
-    if cached_user:
-        return cached_user
 
     query = select(User).where(User.email == user_email)
     result = await session.execute(query)
@@ -324,6 +357,7 @@ async def get_current_user(
         )
 
     await set_user_to_redis(user_email, user)
+    await cache_token(token, payload)
 
     return user
 
