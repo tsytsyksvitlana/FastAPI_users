@@ -1,9 +1,7 @@
 import json
 import logging
 
-from aiocache import Cache
 from aiocache.decorators import cached
-from aiocache.serializers import JsonSerializer
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
@@ -36,10 +34,6 @@ http_bearer = HTTPBearer(auto_error=True)
 logger = logging.getLogger(__name__)
 
 
-cache = Cache.from_url("redis://redis:6379/0")
-cache.serializer = JsonSerializer()
-
-
 def get_redis_client() -> Redis:
     return redis
 
@@ -53,6 +47,7 @@ async def cache_token(token: str, payload: dict) -> None:
     await redis.set(token, payload, expires_in)
 
 
+@cached(ttl=auth_jwt.access_token_expire_minutes * 60)
 async def get_cached_token(token: str) -> dict | None:
     """
     Gets encoded token.
@@ -60,13 +55,6 @@ async def get_cached_token(token: str) -> dict | None:
     token_data = await redis.get(token)
     if token_data:
         return token_data
-
-
-async def remove_cached_token(token: str) -> None:
-    """
-    Deletes token from cache.
-    """
-    await redis.delete(token)
 
 
 async def get_user_from_redis(email: str) -> User | None:
@@ -89,6 +77,7 @@ async def set_user_to_redis(email: str, user: User) -> None:
     await redis.set(email, json.dumps(user_dict), ex=300)
 
 
+@cached(ttl=BLOCK_TIME_SECONDS)
 async def check_block(ip: str) -> bool:
     """
     Returns is ip blocked or not.
@@ -124,6 +113,7 @@ async def add_token_to_blacklist(token: str) -> None:
     )
 
 
+@cached(ttl=auth_jwt.access_token_expire_minutes * 60)
 async def is_token_blacklisted(token: str) -> bool:
     """
     Checks if a token is blacklisted.

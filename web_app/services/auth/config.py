@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import redis.asyncio as redis
+from aiocache import Cache
+from aiocache.serializers import JsonSerializer
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
@@ -27,5 +29,8 @@ REDIS_URL = "redis://redis:6379/0"
 redis_client = redis.from_url(
     REDIS_URL, encoding="utf-8", decode_responses=True
 )
+
+cache = Cache.from_url(REDIS_URL)
+cache.serializer = JsonSerializer()
 
 LOGIN_BONUS = 100
