@@ -52,8 +52,7 @@ async def get_cached_token(token: str) -> dict | None:
     """
     Gets encoded token.
     """
-    token_data = await redis.get(token)
-    if token_data:
+    if token_data := await redis.get(token):
         return token_data
 
 
@@ -319,19 +318,15 @@ async def get_current_user(
             detail="Token is blacklisted",
         )
 
-    cached_payload = await get_cached_token(token)
-    if cached_payload:
-        user_email = cached_payload.get("email")
-        if not user_email:
-            logger.warning("Token validation failed. Invalid token payload.")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-            )
-
-        cached_user = await get_user_from_redis(user_email)
-        if cached_user:
-            return cached_user
+    if cached_payload := await get_cached_token(token):
+        if user_email := cached_payload.get("email"):
+            if cached_user := await get_user_from_redis(user_email):
+                return cached_user
+        logger.warning("Token validation failed. Invalid token payload.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
 
     algorithm = auth_jwt.algorithm
     payload = utils.decode_jwt(token, PUBLIC_KEY, algorithm)
