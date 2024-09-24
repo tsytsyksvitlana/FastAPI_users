@@ -53,8 +53,8 @@ def setup_logger(env_mode: str):
                 "propagate": False,
             },
             "sqlalchemy.engine": {
-                "handlers": ["rotating_file"],
-                "level": "DEBUG",
+                "handlers": ["console", "rotating_file"],
+                "level": "INFO",
                 "propagate": False,
             },
         },

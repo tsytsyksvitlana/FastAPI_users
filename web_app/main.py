@@ -20,11 +20,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     setup_logger(settings.ENV_MODE)
     logger.info("Starting up...")
-    logging.debug("A DEBUG Message")
-    logging.info("An INFO")
-    logging.warning("A WARNING")
-    logging.error("An ERROR")
-    logging.critical("A message of CRITICAL severity")
     yield
     await redis_client.close()
     logger.info("Shutting down...")
